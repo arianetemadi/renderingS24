@@ -1,4 +1,4 @@
-image: localhost:5001/render_image2
+image: localhost:5000/render_image
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
