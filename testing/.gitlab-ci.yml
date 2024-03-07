@@ -17,6 +17,8 @@ testing0:
   stage: test
   script:
     - git submodule update --init --recursive
+    - apt-get install -y python3-dev python2-dev python-pip python3-numpy libboost-all-dev
+    - pip2 install numpy
     - cmake . -Bbuild
     - cd build
     - make -j8
