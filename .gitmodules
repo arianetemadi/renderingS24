@@ -28,3 +28,5 @@
 [submodule "ext/eigen"]
 	path = ext/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "./ext/openexr/"]
+	url = https://gitlab.tuwien.ac.at/e193-02-rendering-course/openexr_patched.git
