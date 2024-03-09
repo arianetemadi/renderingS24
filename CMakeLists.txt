@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.2)
-project(nori)
+project(wienori)
 
 add_subdirectory(ext ext_build)
 
