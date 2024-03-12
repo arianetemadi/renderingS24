@@ -17,6 +17,8 @@ stages:
   
 init_and_build:
   stage: init_and_build
+  tags:
+    - rendering
   script:
     - git submodule update --init --recursive
     - apt-get install -y python3-dev python2-dev python-pip python3-numpy libboost-all-dev
