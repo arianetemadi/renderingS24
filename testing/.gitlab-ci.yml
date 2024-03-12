@@ -31,6 +31,7 @@ init_and_build:
 
 testing0:
   stage: test
+  script:
     - cp -r ./test_data/assignment0/* .
     - python3 run_tests.py
   tags:
