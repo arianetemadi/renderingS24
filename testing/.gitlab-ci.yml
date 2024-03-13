@@ -25,8 +25,6 @@ init_and_build:
     - submission2
     - submission3
   script:
-    - apt-get install -y python3-dev python2-dev python-pip python3-numpy libboost-all-dev
-    - pip2 install numpy
     - if [ ! -d "test_data" ]; then git clone https://gitlab.tuwien.ac.at/e193-02-rendering-course/rendering-data.git test_data; else (cd test_data && git pull); fi
     - cmake . -Bbuild
     - cd build
