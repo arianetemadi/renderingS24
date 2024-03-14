@@ -8,22 +8,35 @@ cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
     - build
+    - test_data
 
 stages:
+  - init_and_build
   - test
   - latex
   
-testing0:
-  stage: test
+init_and_build:
+  stage: init_and_build
+  tags:
+    - rendering
+  only:
+    - submission0
+    - submission1
+    - submission2
+    - submission3
   script:
-    - git submodule update --init --recursive
-    - apt-get install -y python3-dev python2-dev python-pip python3-numpy libboost-all-dev
-    - pip2 install numpy
+    - if [ ! -d "test_data" ]; then git clone https://gitlab.tuwien.ac.at/e193-02-rendering-course/rendering-data.git test_data; else (cd test_data && git pull); fi
     - cmake . -Bbuild
     - cd build
     - make -j8
     - cd ..
-    - cp -r /resources/assignment0/* .
+  allow_failure: false
+
+
+testing0:
+  stage: test
+  script:
+    - cp -r ./test_data/assignment0/* .
     - python3 run_tests.py
   tags:
     - rendering
@@ -36,15 +49,11 @@ testing0:
       - ./*.csv
       - report.tex
     expire_in: 1 d
-  
+
 testing1:
   stage: test
   script:
-    - cmake . -Bbuild
-    - cd build
-    - make -j8
-    - cd ..
-    - cp -r /resources/assignment1/* .
+    - cp -r ./test_data/assignment1/* .
     - python3 run_tests.py
   tags:
     - rendering
@@ -57,15 +66,11 @@ testing1:
       - ./*.csv
       - report.tex
     expire_in: 1 d
-    
+
 testing2:
   stage: test
   script:
-    - cmake . -Bbuild
-    - cd build
-    - make -j8
-    - cd ..
-    - cp -r /resources/assignment2/* .
+    - cp -r ./test_data/assignment2/* .
     - python3 run_tests.py
   tags:
     - rendering
@@ -78,15 +83,11 @@ testing2:
       - ./*.csv
       - report.tex
     expire_in: 1 d
-    
+
 testing3:
   stage: test
   script:
-    - cmake . -Bbuild
-    - cd build
-    - make -j8
-    - cd ..
-    - cp -r /resources/assignment3/* .
+    - cp -r ./test_data/assignment3/* .
     - python3 run_tests.py
   tags:
     - rendering
@@ -99,19 +100,7 @@ testing3:
       - ./*.csv
       - report.tex
     expire_in: 1 d
-    
-testing4:
-  stage: test
-  script:
-    - cmake . -Bbuild
-    - cd build
-    - make -j8
-  tags:
-    - rendering
-  only:
-    - submission4
-  allow_failure: false
-    
+
 report:
   variables:
     GIT_SUBMODULE_STRATEGY: none
