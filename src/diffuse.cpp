@@ -32,12 +32,11 @@ public:
     }
 
     /// Evaluate the BRDF model
-    Color3f eval(const BSDFQueryRecord &bRec) const {
-        /* This is a smooth BRDF -- return zero if the measure
-           is wrong, or when queried for illumination on the backside */
-        if (bRec.measure != ESolidAngle
-            || Frame::cosTheta(bRec.wi) <= 0
-            || Frame::cosTheta(bRec.wo) <= 0)
+    Color3f eval(const BSDFParams &params) const {
+        /* This is a smooth BRDF -- return zero when queried 
+           for illumination on the backside */
+        if (Frame::cosTheta(params.wi) <= 0 || 
+            Frame::cosTheta(params.wo) <= 0)
             return Color3f(0.0f);
 
         /* The BRDF is simply the albedo / pi */
@@ -45,35 +44,36 @@ public:
     }
 
     /// Compute the density of \ref sample() wrt. solid angles
-    float pdf(const BSDFQueryRecord &bRec) const {
-        /* This is a smooth BRDF -- return zero if the measure
-           is wrong, or when queried for illumination on the backside.
+    float pdf(const BSDFParams &params) const {
+        /* This is a smooth BRDF -- return zero when queried 
+           for illumination on the backside.
            
-           Note that the directions in 'bRec' are in local coordinates.*/
-        if (bRec.measure != ESolidAngle
-            || Frame::cosTheta(bRec.wi) <= 0
-            || Frame::cosTheta(bRec.wo) <= 0)
+           Note that the directions in 'params' are in local coordinates.*/
+        if (Frame::cosTheta(params.wi) <= 0 ||
+            Frame::cosTheta(params.wo) <= 0)
             return 0.0f;
 
         return {};
     }
 
     /// Draw a a sample from the BRDF model
-    Color3f sample(BSDFQueryRecord &bRec, const Point2f &sample) const {
-        if (Frame::cosTheta(bRec.wi) <= 0)
-            return Color3f(0.0f);
+    BSDFRecord sample(const Vector3f &wi, const Point2f &sample) const {
+        BSDFRecord bRec;
+        bRec.params.wi = wi;
+
+        if (Frame::cosTheta(wi) <= 0)
+            return bRec;
 
         bRec.measure = ESolidAngle;
 
         /* Warp a uniformly distributed sample on [0,1]^2
            to a direction on the hemisphere */
-        bRec.wo = {};
-
-        /* Relative index of refraction: no change */
-        bRec.eta = 1.0f;
+        bRec.params.wo = {};
 
         // TODO: eval() / pdf() * cos(theta); consider, that some terms cancel out
-        return {};
+        bRec.value = {};
+
+        return bRec;
     }
 
     bool isDiffuse() const {

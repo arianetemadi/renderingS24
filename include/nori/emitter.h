@@ -23,55 +23,57 @@
 NORI_NAMESPACE_BEGIN
 
 /**
- * \brief Data record for conveniently querying and sampling the
- * direct illumination technique implemented by a emitter
+ * \brief Convenience data structure holding all parameters passed
+ * for evaluation methods of the \ref Emitter
  */
-struct EmitterQueryRecord {
-    /// Pointer to the sampled emitter
-    const Emitter *emitter;
-    /// Reference position
-    Point3f ref;
+struct EmitterParams {
     /// Sampled position on the light source
-    Point3f p;
+    Point3f  p;
     /// Associated surface normal
     Normal3f n;
-    /// Solid angle density wrt. 'ref'
-    float pdf;
-    /// Direction vector from 'ref' to 'p'
+    /// Direction vector from reference position to 'p'
     Vector3f d;
-    /// Distance between 'ref' and 'p'
-    float dist;
+    /// Distance between reference position and 'p'
+    float    dist;
 
-    /// Create an unitialized query record
-    EmitterQueryRecord() : emitter(nullptr) { }
-
-    /// Create a new query record that can be used to sample a emitter
-    EmitterQueryRecord(const Point3f &ref) : ref(ref) { }
+    // Default constructor
+    EmitterParams() = default;
 
     /**
-     * \brief Create a query record that can be used to query the
+     * \brief Create a prams struct that can be used to query the
      * sampling density after having intersected an area emitter
      */
-    EmitterQueryRecord(const Emitter *emitter,
-            const Point3f &ref, const Point3f &p,
-            const Normal3f &n) : emitter(emitter), ref(ref), p(p), n(n) {
-        d = p - ref;
+    EmitterParams(const Point3f& ref, const Point3f& p, const Normal3f& n)
+        : p(p), n(n) {
+        d    = p - ref;
         dist = d.norm();
         d /= dist;
     }
 
     /**
-     * \brief Create a query record that can be used to query the
+     * \brief Create a params struct that can be used to query the
      * sampling density after having intersected an environment emitter
      */
-    EmitterQueryRecord(const Emitter *emitter, const Ray3f &ray) :
-        emitter(emitter), ref(ray.o), p(ray(1)), n(-ray.d), d(ray.d),
-        dist(std::numeric_limits<float>::infinity()) {
-    }
+    EmitterParams(const Ray3f& ray)
+        : p(ray(1)), n(-ray.d), d(ray.d),
+          dist(std::numeric_limits<float>::infinity()) {}
 
-
-    /// Return a human-readable string summary
     std::string toString() const;
+};
+
+/**
+ * \brief Data record for conveniently querying and sampling the
+ * direct illumination technique implemented by a \ref Emitter
+ */
+
+struct EmitterRecord {
+    /// Parameters necessary for evaluations with the same emitter query
+    EmitterParams params;
+    /// Solid angle density wrt. reference position
+    float         pdf;
+    /// An importance weight associated with the sample. Includes any
+    /// geometric terms between the emitter and the reference point.
+    Color3f       w;
 };
 
 /**
@@ -92,29 +94,27 @@ public:
      * the emission profile and the geometry term between the reference point
      * and the position on the emitter.
      *
-     * \param lRec
-     *    A lumaire query record that specifies the reference point.
-     *    After the function terminates, it will be populated with the
-     *    position sample and related information
+     * \param ref
+     *    Reference point in the scene
      *
      * \param sample
-     *    A uniformly distributed 2D vector
+     *    A uniformly distributed 3D vector
      *
      * \return
-     *    An importance weight associated with the sample. Includes
-     *    any geometric terms between the emitter and the reference point.
+     *    A lumaire query record that specifies the position sample and
+     *    related information.
      */
-    virtual Color3f sample(EmitterQueryRecord &lRec,
-            const Point2f &sample) const = 0;
+    virtual EmitterRecord sample(const Point3f &ref,
+            const Point3f &sample) const = 0;
 
     /**
      * \brief Compute the sampling density of the direct illumination technique
      * implemented by \ref sample() with respect to the solid angle measure
      */
-    virtual float pdf(const EmitterQueryRecord &lRec) const = 0;
+    virtual float pdf(const EmitterParams &lRec) const = 0;
 
     /// Evaluate the emitted radiance
-    virtual Color3f eval(const EmitterQueryRecord &lRec) const = 0;
+    virtual Color3f eval(const EmitterParams &lRec) const = 0;
 
     /**
      * \brief Return the type of object (i.e. Mesh/Emitter/etc.)
@@ -123,20 +123,18 @@ public:
     EClassType getClassType() const { return EEmitter; }
 };
 
-inline std::string EmitterQueryRecord::toString() const {
+inline std::string EmitterParams::toString() const {
     return tfm::format(
-        "EmitterQueryRecord[\n"
-        "  emitter = \"%s\",\n"
-        "  ref = %s,\n"
+        "EmitterParams[\n"
         "  p = %s,\n"
         "  n = %s,\n"
-        "  pdf = %f,\n"
         "  d = %s,\n"
         "  dist = %f\n"
         "]",
-        indent(emitter->toString()),
-        ref.toString(), p.toString(),
-        n.toString(), pdf, d.toString(), dist
+        p.toString(),
+        n.toString(),
+        d.toString(),
+        dist
     );
 }
 

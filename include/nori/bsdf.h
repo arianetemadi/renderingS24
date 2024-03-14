@@ -23,30 +23,33 @@
 NORI_NAMESPACE_BEGIN
 
 /**
- * \brief Convenience data structure used to pass multiple
- * parameters to the evaluation and sampling routines in \ref BSDF
+ * \brief Convenience data structure holding all parameters passed
+ * for evaluation methods of the \ref BSDF
  */
-struct BSDFQueryRecord {
+struct BSDFParams {
     /// Incident direction (in the local frame)
     Vector3f wi;
 
     /// Outgoing direction (in the local frame)
     Vector3f wo;
 
-    /// Relative refractive index in the sampled direction
-    float eta;
+    /// Position on the surface (expressed in terms of uv coordinates)
+    Point2f uv { 0.f, 0.f };
+};
+
+/**
+ * \brief Convenience data structure used for returning of multiple
+ * results from sampling routine in \ref BSDF
+ */
+struct BSDFRecord {
+    /// Record of specific sampling configuration
+    BSDFParams params;
 
     /// Measure associated with the sample
     EMeasure measure;
 
-    /// Create a new record for sampling the BSDF
-    BSDFQueryRecord(const Vector3f &wi)
-        : wi(wi), eta(1.f), measure(EUnknownMeasure) { }
-
-    /// Create a new record for querying the BSDF
-    BSDFQueryRecord(const Vector3f &wi,
-            const Vector3f &wo, EMeasure measure)
-        : wi(wi), wo(wo), eta(1.f), measure(measure) { }
+    /// The BSDF value divided by the probability density of the sample
+    Color3f value { 0.f, 0.f, 0.f };
 };
 
 /**
@@ -57,18 +60,22 @@ public:
     /**
      * \brief Sample the BSDF and return the importance weight (i.e. the
      * value of the BSDF * cos(theta_o) divided by the probability density
-     * of the sample with respect to solid angles).
+     * of the sample with respect to solid angles), and other record data.
      *
-     * \param bRec    A BSDF query record
+     * \param wi      The incident direction in the local frame
      * \param sample  A uniformly distributed sample on \f$[0,1]^2\f$
      *
-     * \return The BSDF value divided by the probability density of the sample
+     * \return BSDF record structure. Includes:
+     *         1) The direction of the ingoing/outgoing ray in the local frame.
+     *         2) UV location of the sampled point on the surface (if applicable)
+     *         3) The BSDF value divided by the probability density of the 
      *         sample. The returned value also includes the cosine
      *         foreshortening factor associated with the outgoing direction,
      *         when this is appropriate. A zero value means that sampling
      *         failed.
+     *         4) The measure associated with the sample
      */
-    virtual Color3f sample(BSDFQueryRecord &bRec, const Point2f &sample) const = 0;
+    virtual BSDFRecord sample(const Vector3f &wi, const Point2f &sample) const = 0;
 
     /**
      * \brief Evaluate the BSDF for a pair of directions and measure
@@ -79,7 +86,7 @@ public:
      * \return
      *     The BSDF value, evaluated for each color channel
      */
-    virtual Color3f eval(const BSDFQueryRecord &bRec) const = 0;
+    virtual Color3f eval(const BSDFParams &params) const = 0;
 
     /**
      * \brief Compute the probability of sampling \c bRec.wo
@@ -96,7 +103,7 @@ public:
      *     to the specified measure
      */
 
-    virtual float pdf(const BSDFQueryRecord &bRec) const = 0;
+    virtual float pdf(const BSDFParams &bRec) const = 0;
 
     /**
      * \brief Return the type of object (i.e. Mesh/BSDF/etc.)

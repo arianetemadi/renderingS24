@@ -20,7 +20,6 @@
 #include <nori/warp.h>
 #include <pcg32.h>
 #include <hypothesis.h>
-#include <fstream>
 #include <memory>
 
 /*
@@ -121,18 +120,18 @@ public:
 
                 /* Generate many samples from the BSDF and create
                    a histogram / contingency table */
-                BSDFQueryRecord bRec(wi);
                 for (int i=0; i<m_sampleCount; ++i) {
                     Point2f sample(random.nextFloat(), random.nextFloat());
-                    Color3f result = bsdf->sample(bRec, sample);
+                    BSDFRecord bRec = bsdf->sample(wi, sample);
 
-                    if ((result.array() == 0).all())
+                    if ((bRec.value.array() == 0).all())
                         continue;
 
-                    int cosThetaBin = std::min(std::max(0, (int) std::floor((bRec.wo.z()*0.5f+0.5f)
+                    Vector3f wo = bRec.params.wo;
+                    int cosThetaBin = std::min(std::max(0, (int) std::floor((wo.z()*0.5f+0.5f)
                             * m_cosThetaResolution)), m_cosThetaResolution-1);
 
-                    float scaledPhi = std::atan2(bRec.wo.y(), bRec.wo.x()) * INV_TWOPI;
+                    float scaledPhi = std::atan2(wo.y(), wo.x()) * INV_TWOPI;
                     if (scaledPhi < 0)
                         scaledPhi += 1;
 
@@ -162,8 +161,8 @@ public:
                                         (float) (sinTheta * sinPhi),
                                         (float) cosTheta);
 
-                            BSDFQueryRecord bRec(wi, wo, ESolidAngle);
-                            return bsdf->pdf(bRec);
+                            BSDFParams params { wi, wo, ESolidAngle };
+                            return bsdf->pdf(params);
                         };
 
                         double integral = hypothesis::adaptiveSimpson2D(

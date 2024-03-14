@@ -26,28 +26,26 @@ class Mirror : public BSDF {
 public:
     Mirror(const PropertyList &) { }
 
-    Color3f eval(const BSDFQueryRecord &) const {
+    Color3f eval(const BSDFParams &) const {
         /* Discrete BRDFs always evaluate to zero in Nori */
         return Color3f(0.0f);
     }
 
-    float pdf(const BSDFQueryRecord &) const {
+    float pdf(const BSDFParams &) const {
         /* Discrete BRDFs always evaluate to zero in Nori */
         return 0.0f;
     }
 
-    Color3f sample(BSDFQueryRecord &bRec, const Point2f &) const {
+    BSDFRecord sample(const Vector3f &wi, const Point2f &) const {
         throw NoriException("Unimplemented!");
+        BSDFRecord bRec;
 
-        // TODO: Check if bRec.wi is in same hemisphere as surface 
-        // normal, otherwise return black
+        // TODO: Check if wi is in same hemisphere as surface normal,
+        // otherwise return black
         // TODO: Generate a sample of the BRDF's function into bRec.wo
 
-        // Can use these values: mirror is a discrete BRDF and the 
-        // index of refraction eta doesn't change because the ray is
-        // reflected and does not enter a new medium.
+        // Use this value because mirror is a discrete BRDF.
         bRec.measure = EDiscrete;
-        bRec.eta = 1.0f;
 
         // TODO: Return correct BRDF value for drawn sample
     }

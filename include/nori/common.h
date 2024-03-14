@@ -27,7 +27,6 @@
 
 /* Include the basics needed by any Nori file */
 #include <iostream>
-#include <algorithm>
 #include <vector>
 #include <Eigen/Core>
 #include <stdint.h>
@@ -125,7 +124,8 @@ class ImageBlock;
 class Integrator;
 class KDTree;
 class Emitter;
-struct EmitterQueryRecord;
+struct EmitterParams;
+struct EmitterRecord;
 class Mesh;
 class NoriObject;
 class NoriObjectFactory;

@@ -120,15 +120,15 @@ public:
                     cout << "Testing (angle=" << angle << "): " << bsdf->toString() << endl;
                     ++total;
 
-                    BSDFQueryRecord bRec(sphericalDirection(degToRad(angle), 0));
+                    Vector3f wi = sphericalDirection(degToRad(angle), 0);
 
                     cout << "Drawing " << m_sampleCount << " samples .. " << endl;
                     double mean=0, variance = 0;
                     for (int k=0; k<m_sampleCount; ++k) {
                         Point2f sample(random.nextFloat(), random.nextFloat());
-                        double result = (double) bsdf->sample(bRec, sample).getLuminance();
+                        double result = (double) bsdf->sample(wi, sample).value.getLuminance();
 
-                        /* Numerically robust online variance estimation using an
+                        /* Numerically robust online variance estimsation using an
                            algorithm proposed by Donald Knuth (TAOCP vol.2, 3rd ed., p.232) */
                         double delta = result - mean;
                         mean += delta / (double) (k+1);

@@ -65,9 +65,6 @@ public:
      */
     bool rayIntersect(const Ray3f &ray, Intersection &its, bool shadowRay) const;
 
-	// Test ray for an intersection with a triangle in a mesh
-	void testTriangle(const Mesh* mesh, uint32_t idx, Ray3f& ray, bool shadow, Intersection& its, bool& foundIntersection, uint32_t& f) const;
-
 private:
 
 	/*
@@ -92,6 +89,29 @@ private:
 	std::vector<BVH> m_bvhs;
 
     BoundingBox3f m_bbox;           ///< Bounding box of the entire scene
+
+private:
+    // Test ray for an intersection with a triangle in a mesh
+	/**
+     * \brief Test ray for an intersection with a triangle in a mesh and return
+     * intersection data
+     *
+     * \param mesh Mesh containing the triangle
+     * \param idx Index of the triangle
+     * \param ray Reference to the ray
+     * \param shadow Boolean indicating if this ray is a shadow ray
+     * \param its Reference to the intersection data (output)
+     */
+    static bool testTriangle(
+        const Mesh*    mesh,
+        const uint32_t idx,
+        const Ray3f&   ray,
+        const bool     shadow,
+        Intersection&  its
+    );
+
+    // Helper function used by rayIntersect method
+    static void computeItsProps(uint32_t const& f, Intersection& its);
 };
 
 NORI_NAMESPACE_END

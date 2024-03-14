@@ -32,17 +32,17 @@ public:
         m_extIOR = propList.getFloat("extIOR", 1.000277f);
     }
 
-    Color3f eval(const BSDFQueryRecord &) const {
+    Color3f eval(const BSDFParams &) const {
         /* Discrete BRDFs always evaluate to zero in Nori */
         return Color3f(0.0f);
     }
 
-    float pdf(const BSDFQueryRecord &) const {
+    float pdf(const BSDFParams &) const {
         /* Discrete BRDFs always evaluate to zero in Nori */
         return 0.0f;
     }
 
-    Color3f sample(BSDFQueryRecord &bRec, const Point2f &sample) const {
+    BSDFRecord sample(const Vector3f &wi, const Point2f &sample) const {
         throw NoriException("Unimplemented!");
     }
 

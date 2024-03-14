@@ -66,7 +66,8 @@ using nori::Point3f;
 using nori::Warp;
 using nori::PropertyList;
 using nori::BSDF;
-using nori::BSDFQueryRecord;
+using nori::BSDFParams;
+using nori::BSDFRecord;
 using nori::Color3f;
 
 
@@ -103,17 +104,17 @@ struct WarpTest {
     WarpType warpType;
     float parameterValue;
     BSDF *bsdf;
-    BSDFQueryRecord bRec;
+    BSDFParams params;
     int xres, yres, res;
 
     // Observed and expected frequencies, initialized after calling run().
     std::unique_ptr<double[]> obsFrequencies, expFrequencies;
 
     WarpTest(WarpType warpType_, float parameterValue_, BSDF *bsdf_ = nullptr,
-             BSDFQueryRecord bRec_ = BSDFQueryRecord(nori::Vector3f()),
+             BSDFParams bRec_ = {},
              int xres_ = kDefaultXres, int yres_ = kDefaultYres)
         : warpType(warpType_), parameterValue(parameterValue_), bsdf(bsdf_),
-          bRec(bRec_), xres(xres_), yres(yres_) {
+          params(bRec_), xres(xres_), yres(yres_) {
 
         if (warpType != Square && warpType != Disk && warpType != Tent)
             xres *= 2;
@@ -186,10 +187,9 @@ struct WarpTest {
                 else if (warpType == Beckmann)
                     return Warp::squareToBeckmannPdf(v, parameterValue);
                 else if (warpType == MicrofacetBRDF || warpType == PhongBRDF) {
-                    BSDFQueryRecord br(bRec);
-                    br.wo = v;
-                    br.measure = nori::ESolidAngle;
-                    return bsdf->pdf(br);
+                    BSDFParams par(params);
+                    par.wo = v;
+                    return bsdf->pdf(par);
                 } else {
                     throw NoriException("Invalid warp type");
                 }
@@ -253,11 +253,11 @@ struct WarpTest {
                 result << Warp::squareToBeckmann(sample, parameterValue); break;
             case MicrofacetBRDF:
             case PhongBRDF:{
-                BSDFQueryRecord br(bRec);
-                float value = bsdf->sample(br, sample).getLuminance();
+                BSDFRecord bRec = bsdf->sample(params.wi, sample);
+                float value = bRec.value.getLuminance();
                 return std::make_pair(
-                    br.wo,
-                    value == 0 ? 0.f : bsdf->eval(br)[0]
+                    bRec.params.wo,
+                    value == 0 ? 0.f : bsdf->eval(bRec.params)[0]
                 );
              }
              default:
@@ -305,7 +305,7 @@ struct WarpTest {
         }
     }
 
-    static std::pair<BSDF *, BSDFQueryRecord>
+    static std::pair<BSDF *, BSDFParams>
     create_microfacet_bsdf(float alpha, float kd, float bsdfAngle) {
         PropertyList list;
         list.setFloat("alpha", alpha);
@@ -315,10 +315,10 @@ struct WarpTest {
         nori::Vector3f wi(std::sin(bsdfAngle), 0.f,
                     std::max(std::cos(bsdfAngle), 1e-4f));
         wi = wi.normalized();
-        BSDFQueryRecord bRec(wi);
-        return { brdf, bRec };
+        BSDFParams params { wi, nori::Vector3f() };
+        return { brdf, params };
     }
-    static std::pair<BSDF *, BSDFQueryRecord>
+    static std::pair<BSDF *, BSDFParams>
     create_phong_bsdf(float kd, float exponent, float percent_diffuse, float bsdfAngle) {
         PropertyList list;
         list.setColor("diffuse_albedo", Color3f(kd));
@@ -331,8 +331,8 @@ struct WarpTest {
         nori::Vector3f wi(std::sin(bsdfAngle), 0.f,
                     std::max(std::cos(bsdfAngle), 1e-4f));
         wi = wi.normalized();
-        BSDFQueryRecord bRec(wi);
-        return { brdf, bRec };
+        BSDFParams params { wi, nori::Vector3f() };
+        return { brdf, params };
     }
 };
 
@@ -431,7 +431,7 @@ public:
 class WarpTestScreen : public Screen {
 public:
 
-    WarpTestScreen(): Screen(Vector2i(800, 600), "warptest: Sampling and Warping"), m_bRec(nori::Vector3f()) {
+    WarpTestScreen(): Screen(Vector2i(800, 600), "warptest: Sampling and Warping"), m_params() {
         inc_ref();
         m_drawHistogram = false;
         initializeGUI();
@@ -462,21 +462,21 @@ public:
         if (warpType == MicrofacetBRDF) {
             BSDF *ptr;
             float bsdfAngle = M_PI * (m_angleSlider->value() - 0.5f);
-            std::tie(ptr, m_bRec) = WarpTest::create_microfacet_bsdf(
+            std::tie(ptr, m_params) = WarpTest::create_microfacet_bsdf(
                 parameterValue, parameter2Value, bsdfAngle);
             m_brdf.reset(ptr);
         }
         if (warpType == PhongBRDF) {
             BSDF *ptr;
             float bsdfAngle = M_PI * (m_angleSlider->value() - 0.5f);
-            std::tie(ptr, m_bRec) = WarpTest::create_phong_bsdf(1.f, parameterValue, parameter2Value, bsdfAngle);
+            std::tie(ptr, m_params) = WarpTest::create_phong_bsdf(1.f, parameterValue, parameter2Value, bsdfAngle);
             m_brdf.reset(ptr);
         }
 
         /* Generate the point positions */
         nori::MatrixXf positions, values;
         try {
-            WarpTest tester(warpType, parameterValue, m_brdf.get(), m_bRec);
+            WarpTest tester(warpType, parameterValue, m_brdf.get(), m_params);
             tester.generatePoints(m_pointCount, pointType, positions, values);
         } catch (const NoriException &e) {
             m_warpTypeBox->set_selected_index(0);
@@ -523,7 +523,7 @@ public:
             positions.resize(3, m_lineCount);
             float coarseScale = 1.f / gridRes, fineScale = 1.f / fineGridRes;
 
-            WarpTest tester(warpType, parameterValue, m_brdf.get(), m_bRec);
+            WarpTest tester(warpType, parameterValue, m_brdf.get(), m_params);
             for (int i=0; i<=gridRes; ++i) {
                 for (int j=0; j<=fineGridRes; ++j) {
                     auto pt = tester.warpPoint(Point2f(j * fineScale, i * coarseScale));
@@ -552,9 +552,9 @@ public:
             positions.col(ctr++) << std::cos(angle2)*.5f + 0.5f, std::sin(angle2)*.5f + 0.5f, 0.f;
         }
         positions.col(ctr++) << 0.5f, 0.5f, 0.f;
-        positions.col(ctr++) << -m_bRec.wi.x() * 0.5f + 0.5f, -m_bRec.wi.y() * 0.5f + 0.5f, m_bRec.wi.z() * 0.5f;
+        positions.col(ctr++) << -m_params.wi.x() * 0.5f + 0.5f, -m_params.wi.y() * 0.5f + 0.5f, m_params.wi.z() * 0.5f;
         positions.col(ctr++) << 0.5f, 0.5f, 0.f;
-        positions.col(ctr++) << m_bRec.wi.x() * 0.5f + 0.5f, m_bRec.wi.y() * 0.5f + 0.5f, m_bRec.wi.z() * 0.5f;
+        positions.col(ctr++) << m_params.wi.x() * 0.5f + 0.5f, m_params.wi.y() * 0.5f + 0.5f, m_params.wi.z() * 0.5f;
         m_arrowShader->set_buffer("position", VariableType::Float32, {106, 3}, positions.data());
 
         /* Update user interface */
@@ -704,7 +704,7 @@ public:
         WarpType warpType = (WarpType) m_warpTypeBox->selected_index();
         float parameterValue = mapParameter(warpType, m_parameterSlider->value());
 
-        WarpTest tester(warpType, parameterValue, m_brdf.get(), m_bRec);
+        WarpTest tester(warpType, parameterValue, m_brdf.get(), m_params);
         m_testResult = tester.run();
 
         float maxValue = 0, minValue = std::numeric_limits<float>::infinity();
@@ -977,7 +977,7 @@ private:
     int m_pointCount, m_lineCount;
     bool m_drawHistogram;
     std::unique_ptr<BSDF> m_brdf;
-    BSDFQueryRecord m_bRec;
+    BSDFParams m_params;
     std::pair<bool, std::string> m_testResult;
     nanogui::ref<RenderPass> m_renderPass;
 };
@@ -1017,19 +1017,19 @@ int main(int argc, char **argv) {
     WarpType warpType;
     float paramValue, param2Value;
     std::unique_ptr<BSDF> bsdf;
-    auto bRec = BSDFQueryRecord(nori::Vector3f());
+    BSDFParams par {};
     std::tie(warpType, paramValue, param2Value) = parse_arguments(argc, argv);
     if (warpType == MicrofacetBRDF) {
         float bsdfAngle = M_PI * 0.f;
         BSDF *ptr;
-        std::tie(ptr, bRec) = WarpTest::create_microfacet_bsdf(
+        std::tie(ptr, par) = WarpTest::create_microfacet_bsdf(
             paramValue, param2Value, bsdfAngle);
         bsdf.reset(ptr);
     }
     if (warpType == PhongBRDF) {
         float bsdfAngle = M_PI * 0.f;
         BSDF *ptr;
-        std::tie(ptr, bRec) = WarpTest::create_phong_bsdf(1.f, paramValue, param2Value, bsdfAngle);
+        std::tie(ptr, par) = WarpTest::create_phong_bsdf(1.f, paramValue, param2Value, bsdfAngle);
         bsdf.reset(ptr);
     }
 
@@ -1040,7 +1040,7 @@ int main(int argc, char **argv) {
         "Testing warp %s, parameter value = %f%s",
          kWarpTypeNames[int(warpType)], paramValue, extra
     ) << std::endl;
-    WarpTest tester(warpType, paramValue, bsdf.get(), bRec);
+    WarpTest tester(warpType, paramValue, bsdf.get(), par);
     auto res = tester.run();
     if (res.first)
         return 0;
