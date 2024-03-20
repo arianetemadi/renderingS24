@@ -92,6 +92,7 @@ add_executable(nori
   src/intersections.cpp
 
   #mine
+  src/normals.cpp
 )
 
 add_definitions(${NANOGUI_EXTRA_DEFS})
