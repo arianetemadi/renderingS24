@@ -58,7 +58,7 @@ Bitmap *ImageBlock::toBitmap() const {
     Bitmap *result = new Bitmap(m_size);
     for (int y=0; y<m_size.y(); ++y)
         for (int x=0; x<m_size.x(); ++x)
-			result->coeffRef(y, x) = coeff(y + m_borderSize, x + m_borderSize).head<3>();
+			result->coeffRef(y, x) = coeff(y + m_borderSize, x + m_borderSize).divideByFilterWeight();
     return result;
 }
 
@@ -79,7 +79,7 @@ void ImageBlock::put(const Point2f &_pos, const Color3f &value) {
     }
     Index y = std::max(Index(0), std::min(rows()-1, Index(_pos.y() - m_offset.y())));
     Index x = std::max(Index(0), std::min(cols()-1, Index(_pos.x() - m_offset.x())));
-    coeffRef(y, x) = Color4f(value);    // Color4f appends a 1 in the constructor taking a vec3
+    coeffRef(y, x) += Color4f(value);    // Color4f appends a 1 in the constructor taking a vec3
 }
     
 void ImageBlock::put(ImageBlock &b) {

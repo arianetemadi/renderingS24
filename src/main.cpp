@@ -49,7 +49,7 @@ static void renderBlock(const Scene *scene, Sampler *sampler, ImageBlock &block)
     /* For each pixel and pixel sample sample */
     for (int y=0; y<size.y(); ++y) {
         for (int x=0; x<size.x(); ++x) {
-            for (uint32_t i=0; i<1; ++i) {
+            for (uint32_t i=0; i<sampler->getSampleCount(); ++i) {
                 Point2f pixelSample = Point2f(float(x + offset.x()), float(y + offset.y())) + Point2f(0.5f, 0.5f);  // go through the centre of the pixel
                 pixelSample.x() = std::min(pixelSample.x(), std::nextafter(float(x + offset.x() + 1), 0.f));
                 pixelSample.y() = std::min(pixelSample.y(), std::nextafter(float(y + offset.y() + 1), 0.f));
