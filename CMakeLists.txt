@@ -93,6 +93,7 @@ add_executable(nori
 
   #mine
   src/normals.cpp
+  src/integrator_ao.cpp
 )
 
 add_definitions(${NANOGUI_EXTRA_DEFS})
