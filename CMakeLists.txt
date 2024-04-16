@@ -96,6 +96,7 @@ add_executable(nori
   src/integrator_ao.cpp
   src/integrator_direct_lighting.cpp
   src/emitter_area.cpp
+  src/emitter_parallelogram.cpp
 )
 
 add_definitions(${NANOGUI_EXTRA_DEFS})
