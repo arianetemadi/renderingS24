@@ -5,9 +5,9 @@
 
 NORI_NAMESPACE_BEGIN
 
-class AmbientOcclusionIntegrator : public Integrator {
+class DirectLightingIntegrator : public Integrator {
  public:
-  AmbientOcclusionIntegrator(const PropertyList &props) { /* No parameters this time */
+  DirectLightingIntegrator(const PropertyList &props) { /* No parameters this time */
   }
 
   Color3f Li(const Scene *scene, Sampler *sampler, const Ray3f &ray) const {
@@ -34,8 +34,8 @@ class AmbientOcclusionIntegrator : public Integrator {
     return occ;
   }
 
-  std::string toString() const { return "AmbientOcclusionIntegrator[]"; }
+  std::string toString() const { return "DirectLightingIntegrator[]"; }
 };
 
-NORI_REGISTER_CLASS(AmbientOcclusionIntegrator, "ao");
+NORI_REGISTER_CLASS(DirectLightingIntegrator, "direct_lighting");
 NORI_NAMESPACE_END

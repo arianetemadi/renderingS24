@@ -94,6 +94,8 @@ add_executable(nori
   #mine
   src/normals.cpp
   src/integrator_ao.cpp
+  src/integrator_direct_lighting.cpp
+  src/emitter_area.cpp
 )
 
 add_definitions(${NANOGUI_EXTRA_DEFS})
