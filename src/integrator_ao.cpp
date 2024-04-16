@@ -30,7 +30,7 @@ class AmbientOcclusionIntegrator : public Integrator {
         occ = {0.0, 0.0, 0.0};
     }
     occ *= (shadow_ray.d.dot(its.shFrame.n));
-    occ *= 2.5;
+    occ *= 2.0;
     return occ;
   }
 
