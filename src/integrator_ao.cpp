@@ -16,13 +16,10 @@ class AmbientOcclusionIntegrator : public Integrator {
     if (!scene->rayIntersect(ray, its)) return Color3f(0.0f);
 
     /* Return the ambient-occlusion value as a color */
-    Point2f sample = sampler->next2D();
-    Vector3f hemisphere_sample_local = Warp::squareToUniformHemisphere(sample);
-    Vector3f hemisphere_sample_global = its.toWorld(hemisphere_sample_local);
-    
     Ray3f shadow_ray;
     shadow_ray.o = its.p;
-    shadow_ray.d = hemisphere_sample_global;
+    shadow_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
+    shadow_ray.mint = Epsilon;
     shadow_ray.maxt = scene->getBoundingBox().getExtents().norm();
     shadow_ray.update();
     Intersection shadow_its;
@@ -32,8 +29,8 @@ class AmbientOcclusionIntegrator : public Integrator {
     } else {
         occ = {0.0, 0.0, 0.0};
     }
-    occ *= (hemisphere_sample_global.dot(its.shFrame.n));
-    occ *= 2;
+    occ *= (shadow_ray.d.dot(its.shFrame.n));
+    occ *= 2.5;
     return occ;
   }
 
