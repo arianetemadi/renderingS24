@@ -13,9 +13,9 @@ public:
 
     float pdf(const EmitterParams &lRec) const {};
 
-    Color3f eval(const EmitterParams &lRec) const {
-        return radiance;
-    };
+    Color3f eval(const EmitterParams &lRec) const { return radiance; };
+
+    Color3f getRadiance() { return radiance; }
     
     std::string toString() const { 
         return tfm::format(
