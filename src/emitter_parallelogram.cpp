@@ -9,14 +9,14 @@ public:
     }
         
     EmitterRecord sample(const Point3f &ref,
-                const Point3f &sample) const {};
+                const Point3f &sample) const {}
 
-    float pdf(const EmitterParams &lRec) const {};
+    float pdf(const EmitterParams &lRec) const {}
 
-    Color3f eval(const EmitterParams &lRec) const { return radiance; };
+    Color3f eval(const EmitterParams &lRec) const {
+        return radiance;
+    }
 
-    Color3f getRadiance() { return radiance; }
-    
     std::string toString() const { 
         return tfm::format(
             "ParallelogramEmitter[\n"

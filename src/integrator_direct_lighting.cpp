@@ -7,36 +7,42 @@
 NORI_NAMESPACE_BEGIN
 
 class DirectLightingIntegrator : public Integrator {
- public:
-  DirectLightingIntegrator(const PropertyList &props) { /* No parameters this time */
-  }
+public:
+    DirectLightingIntegrator(const PropertyList &props) { /* No parameters this time */ }
 
-  Color3f Li(const Scene *scene, Sampler *sampler, const Ray3f &ray) const {
-    /* Find the surface that is visible in the requested direction */
-    Intersection its;
-    if (!scene->rayIntersect(ray, its)) return Color3f(0.0f);
+    Color3f Li(const Scene *scene, Sampler *sampler, const Ray3f &ray) const {
+        /* Find the surface that is visible in the requested direction */
+        Intersection its;
+        if (!scene->rayIntersect(ray, its)) {
+            return Color3f(0.0f);
+        }
 
-    if (its.mesh->isEmitter()) return its.mesh->getEmitter()->eval(EmitterParams());
+        /* If directly hit light, return the radiance of light */
+        if (its.mesh->isEmitter()) {
+            return its.mesh->getEmitter()->eval(EmitterParams());
+        }
 
-    /* Return the ambient-occlusion value as a color */
-    Ray3f shadow_ray;
-    shadow_ray.o = its.p;
-    shadow_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
-    shadow_ray.mint = Epsilon;
-    shadow_ray.update();
-    Intersection shadow_its;
-    Color3f light_src;
-    if (scene->rayIntersect(shadow_ray, shadow_its) && shadow_its.mesh->isEmitter()) {
-        light_src = shadow_its.mesh->getEmitter()->eval(EmitterParams());
-    } else {
-        light_src = {0.0, 0.0, 0.0};
+        /* Shoot ray to sample incoming direct radiance */
+        Ray3f shadow_ray;
+        shadow_ray.o = its.p;
+        shadow_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
+        shadow_ray.mint = Epsilon;
+        shadow_ray.update();
+        Intersection shadow_its;
+
+        /* Return black since the ray did not reach light */
+        if (!scene->rayIntersect(shadow_ray, shadow_its) || !shadow_its.mesh->isEmitter()) {
+            return Color3f(0.0f);
+        }
+
+        /* Return the incoming direct radiance from this direction */
+        Color3f color = shadow_its.mesh->getEmitter()->eval(EmitterParams());
+        color *= (shadow_ray.d.dot(its.shFrame.n));
+        color *= 2.0;
+        return color;
     }
-    light_src *= (shadow_ray.d.dot(its.shFrame.n));
-    light_src *= 2.0;
-    return light_src;
-  }
 
-  std::string toString() const { return "DirectLightingIntegrator[]"; }
+    std::string toString() const { return "DirectLightingIntegrator[]"; }
 };
 
 NORI_REGISTER_CLASS(DirectLightingIntegrator, "direct_lighting");

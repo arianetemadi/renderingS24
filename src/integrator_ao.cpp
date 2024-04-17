@@ -6,35 +6,38 @@
 NORI_NAMESPACE_BEGIN
 
 class AmbientOcclusionIntegrator : public Integrator {
- public:
-  AmbientOcclusionIntegrator(const PropertyList &props) { /* No parameters this time */
-  }
+public:
+    AmbientOcclusionIntegrator(const PropertyList &props) { /* No parameters this time */ }
 
-  Color3f Li(const Scene *scene, Sampler *sampler, const Ray3f &ray) const {
-    /* Find the surface that is visible in the requested direction */
-    Intersection its;
-    if (!scene->rayIntersect(ray, its)) return Color3f(0.0f);
+    Color3f Li(const Scene *scene, Sampler *sampler, const Ray3f &ray) const {
+        /* Find the surface that is visible in the requested direction */
+        Intersection its;
+        if (!scene->rayIntersect(ray, its)) {
+            return Color3f(0.0f);
+        }
 
-    /* Return the ambient-occlusion value as a color */
-    Ray3f shadow_ray;
-    shadow_ray.o = its.p;
-    shadow_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
-    shadow_ray.mint = Epsilon;
-    shadow_ray.maxt = scene->getBoundingBox().getExtents().norm();
-    shadow_ray.update();
-    Intersection shadow_its;
-    Color3f occ;
-    if (!scene->rayIntersect(shadow_ray, shadow_its)) {
-        occ = {1.0, 1.0, 1.0};
-    } else {
-        occ = {0.0, 0.0, 0.0};
+        /* Shoot ray to sample the local surrounding */
+        Ray3f shadow_ray;
+        shadow_ray.o = its.p;
+        shadow_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
+        shadow_ray.mint = Epsilon;
+        shadow_ray.maxt = scene->getBoundingBox().getExtents().norm();
+        shadow_ray.update();
+        Intersection shadow_its;
+
+        /* Return black if hit something */
+        if (scene->rayIntersect(shadow_ray, shadow_its)) {
+            return Color3f(0.0f);
+        }
+
+        /* Return the ambient occlusion radiance */
+        Color3f color(1.0f);
+        color *= (shadow_ray.d.dot(its.shFrame.n));
+        color *= 2.0;
+        return color;
     }
-    occ *= (shadow_ray.d.dot(its.shFrame.n));
-    occ *= 2.0;
-    return occ;
-  }
 
-  std::string toString() const { return "AmbientOcclusionIntegrator[]"; }
+    std::string toString() const { return "AmbientOcclusionIntegrator[]"; }
 };
 
 NORI_REGISTER_CLASS(AmbientOcclusionIntegrator, "ao");
