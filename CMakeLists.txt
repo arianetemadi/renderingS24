@@ -97,6 +97,7 @@ add_executable(nori
   src/integrator_direct_lighting.cpp
   src/emitter_area.cpp
   src/emitter_parallelogram.cpp
+  src/path_tracer_recursive.cpp
 )
 
 add_definitions(${NANOGUI_EXTRA_DEFS})
