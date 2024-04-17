@@ -18,7 +18,7 @@ public:
 
         /* Shoot ray to sample the local surrounding */
         Ray3f shadow_ray;
-        shadow_ray.o = its.p;
+        shadow_ray.o = its.p + Epsilon * its.shFrame.n;
         shadow_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
         shadow_ray.mint = Epsilon;
         shadow_ray.maxt = scene->getBoundingBox().getExtents().norm();

@@ -62,7 +62,7 @@ private:
 
     Color3f Li_depth(const Scene *scene, Sampler *sampler, const Ray3f &ray, int max_bounces) const {
         /* Return black if reached the maximum number of bounces */
-        if (max_bounces > 3) {
+        if (max_bounces > 4) {
             return Color3f(0.0f);
         }
 
@@ -80,7 +80,7 @@ private:
 
         /* Sample ray in random direction */
         Ray3f sample_ray;
-        sample_ray.o = its.p;
+        sample_ray.o = its.p + Epsilon * its.shFrame.n;
         sample_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
         sample_ray.mint = Epsilon;
         sample_ray.update();
