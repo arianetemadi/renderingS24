@@ -3,6 +3,7 @@
 #include <nori/sampler.h>
 #include <nori/warp.h>
 #include <nori/emitter.h>
+#include <nori/bsdf.h>
 
 NORI_NAMESPACE_BEGIN
 
@@ -42,10 +43,11 @@ private:
         sample_ray.update();
 
         /* Return the incoming direct radiance from this direction */
-        Color3f color = Li_depth(scene, sampler, sample_ray, max_bounces + 1);
-        color *= (sample_ray.d.dot(its.shFrame.n));
-        color *= 2.0;
-        return color;
+        BSDFParams params {its.toLocal(sample_ray.d), -its.toLocal(ray.d)};
+        return Li_depth(scene, sampler, sample_ray, max_bounces + 1)
+                * (sample_ray.d.dot(its.shFrame.n))
+                * its.mesh->getBSDF()->eval(params)
+                * 2 * M_PI;
     }
 };
 
