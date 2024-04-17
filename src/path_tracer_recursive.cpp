@@ -30,9 +30,10 @@ private:
             return Color3f(0.0f);
         }
 
-        /* If directly hit light, return the radiance of light */
+        /* If directly hit light, add the emitted radiance */
+        Color3f emitted_radiance(0.f);
         if (its.mesh->isEmitter()) {
-            return its.mesh->getEmitter()->eval(EmitterParams());
+            emitted_radiance = its.mesh->getEmitter()->eval(EmitterParams());
         }
 
         /* Sample ray in random direction */
@@ -47,7 +48,8 @@ private:
         return Li_depth(scene, sampler, sample_ray, max_bounces + 1)
                 * (sample_ray.d.dot(its.shFrame.n))
                 * its.mesh->getBSDF()->eval(params)
-                * 2 * M_PI;
+                * 2 * M_PI
+                + emitted_radiance;
     }
 };
 
