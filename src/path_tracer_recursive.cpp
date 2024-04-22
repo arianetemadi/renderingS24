@@ -22,47 +22,9 @@ public:
 private:
     bool russian_roulette;
 
-    // Color3f Li_depth(const Scene *scene, Sampler *sampler, const Ray3f &ray, int max_bounces) const {
-    //     /* Return black if reached the maximum number of bounces */
-    //     if (max_bounces > 3) {
-    //         return Color3f(0.0f);
-    //     }
-
-    //     /* Find the surface that is visible in the requested direction */
-    //     Intersection its;
-    //     if (!scene->rayIntersect(ray, its)) {
-    //         return Color3f(0.0f);
-    //     }
-
-    //     /* If directly hit light, add the emitted radiance */
-    //     Color3f emitted_radiance(0.f);
-    //     if (its.mesh->isEmitter()) {
-    //         emitted_radiance = its.mesh->getEmitter()->eval(EmitterParams());
-    //     }
-
-    //     /* Sample ray in random direction */
-    //     Ray3f sample_ray;
-    //     sample_ray.o = its.p;
-    //     sample_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
-    //     sample_ray.mint = Epsilon;
-    //     sample_ray.update();
-
-    //     /* Return the incoming direct radiance from this direction */
-    //     Color3f ret(0.f);
-    //     for (int i = 0; i < sampler->getSampleCount(); i++) {
-    //         BSDFParams params {its.toLocal(sample_ray.d), -its.toLocal(ray.d)};
-    //         ret += Li_depth(scene, sampler, sample_ray, max_bounces + 1)
-    //                 * (sample_ray.d.dot(its.shFrame.n))
-    //                 * its.mesh->getBSDF()->eval(params)
-    //                 * 2 * M_PI;
-    //     }
-    //     return emitted_radiance + ret / sampler->getSampleCount();
-    // }
-
-
     Color3f Li_depth(const Scene *scene, Sampler *sampler, const Ray3f &ray, int max_bounces) const {
-        /* Return black if reached the maximum number of bounces */
-        if (max_bounces > 4) {
+        /* Return black if reached the maximum number of bounces, only when no RR */
+        if (!russian_roulette && max_bounces > 3) {
             return Color3f(0.0f);
         }
 
@@ -78,6 +40,14 @@ private:
             emitted_radiance = its.mesh->getEmitter()->eval(EmitterParams());
         }
 
+        /* Russian Roulette */
+        double rr_prob = (russian_roulette && max_bounces > 3) ? 0.7 : 1;
+        if (russian_roulette && max_bounces > 3) {
+            if (sampler->next1D() >= rr_prob) {
+                return emitted_radiance;
+            }
+        }
+
         /* Sample ray in random direction */
         Ray3f sample_ray;
         sample_ray.o = its.p + Epsilon * its.shFrame.n;
@@ -91,6 +61,7 @@ private:
                 * (sample_ray.d.dot(its.shFrame.n))
                 * its.mesh->getBSDF()->eval(params)
                 * 2 * M_PI
+                / rr_prob
                 + emitted_radiance;
     }
 };
