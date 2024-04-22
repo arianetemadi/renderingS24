@@ -28,6 +28,3 @@
 [submodule "ext/eigen"]
 	path = ext/eigen
 	url = https://gitlab.com/libeigen/eigen.git
-[submodule "rendering-data"]
-	path = rendering-data
-	url = ssh://git@gitlab.tuwien.ac.at:822/e193-02-rendering-course/rendering-data.git
