@@ -20,11 +20,14 @@ public:
     std::string toString() const { return "PathTracerRecursiveIntegrator[]"; }
 
 private:
+    int max_bounces = 3;
     bool russian_roulette;
+    int rr_min_bounces = 4;
+    double rr_prob = 0.7;
 
-    Color3f Li_depth(const Scene *scene, Sampler *sampler, const Ray3f &ray, int max_bounces) const {
+    Color3f Li_depth(const Scene *scene, Sampler *sampler, const Ray3f &ray, int bounce_cnt) const {
         /* Return black if reached the maximum number of bounces, only when no RR */
-        if (!russian_roulette && max_bounces > 3) {
+        if (!russian_roulette && bounce_cnt > max_bounces) {
             return Color3f(0.0f);
         }
 
@@ -41,9 +44,10 @@ private:
         }
 
         /* Russian Roulette */
-        double rr_prob = (russian_roulette && max_bounces > 3) ? 0.7 : 1;
-        if (russian_roulette && max_bounces > 3) {
-            if (sampler->next1D() >= rr_prob) {
+        bool kill_cond = (russian_roulette && bounce_cnt >= rr_min_bounces);
+        double kill_prob = kill_cond ? rr_prob : 1;
+        if (kill_cond) {
+            if (sampler->next1D() >= kill_prob) {
                 return emitted_radiance;
             }
         }
@@ -57,11 +61,11 @@ private:
 
         /* Return the incoming direct radiance from this direction */
         BSDFParams params {its.toLocal(sample_ray.d), -its.toLocal(ray.d)};
-        return Li_depth(scene, sampler, sample_ray, max_bounces + 1)
+        return Li_depth(scene, sampler, sample_ray, bounce_cnt + 1)
                 * (sample_ray.d.dot(its.shFrame.n))
                 * its.mesh->getBSDF()->eval(params)
                 * 2 * M_PI
-                / rr_prob
+                / kill_prob
                 + emitted_radiance;
     }
 };
