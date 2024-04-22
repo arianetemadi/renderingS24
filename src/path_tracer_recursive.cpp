@@ -27,7 +27,7 @@ private:
 
     Color3f Li_depth(const Scene *scene, Sampler *sampler, const Ray3f &ray, int bounce_cnt) const {
         /* Return black if reached the maximum number of bounces, only when no RR */
-        if (!russian_roulette && bounce_cnt > max_bounces) {
+        if (!russian_roulette && bounce_cnt >= max_bounces) {
             return Color3f(0.0f);
         }
 
@@ -44,7 +44,7 @@ private:
         }
 
         /* Russian Roulette */
-        bool kill_cond = (russian_roulette && bounce_cnt >= rr_min_bounces);
+        bool kill_cond = (russian_roulette && bounce_cnt > rr_min_bounces);
         double kill_prob = kill_cond ? rr_prob : 1;
         if (kill_cond) {
             if (sampler->next1D() >= kill_prob) {
