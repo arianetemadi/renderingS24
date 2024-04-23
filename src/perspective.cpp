@@ -109,6 +109,8 @@ public:
         ray.maxt = m_farClip * invZ;
         ray.update();
 
+        
+
         return Color3f(1.0f);
     }
 
