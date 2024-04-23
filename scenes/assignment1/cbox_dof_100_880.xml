@@ -5,7 +5,7 @@
 		<boolean name="rr" value="true"/>
     </integrator>
 	<sampler type="independent">
-		<integer name="sampleCount" value="256"/>
+		<integer name="sampleCount" value="4096"/>
 	</sampler>
 	<camera type="perspective">
 		<float name="fov" value="35.14625251087677"/>
@@ -18,8 +18,8 @@
 			<matrix value="1.0,-2.279973153091093e-14,3.019916050561733e-07,-277.99993896484375,3.019916050561733e-07,7.549790126404332e-08,-1.0,-766.3980102539062,0.0,1.0,7.549790126404332e-08,273.0,0.0,0.0,0.0,1.0"/>
 		</transform>
 		<boolean name="DoF" value="true"/>
-		<float name="aperture" value="300"/>
-		<float name="focalLength" value="830"/>
+		<float name="aperture" value="100"/>
+		<float name="focalLength" value="880"/>
 	</camera>
     <mesh type="parallelogram">
 		<string name="name" value="light"/>

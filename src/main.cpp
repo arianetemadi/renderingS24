@@ -26,6 +26,7 @@
 #include <nori/sampler.h>
 #include <nori/scene.h>
 #include <nori/timer.h>
+#include <nori/warp.h>
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
@@ -55,7 +56,7 @@ static void renderBlock(Scene *scene, Sampler *sampler,
                 Point2f pixelSample = Point2f(float(x + offset.x()), float(y + offset.y())) + Point2f(0.5f, 0.5f);  // go through the centre of the pixel
                 pixelSample.x() = std::min(pixelSample.x(), std::nextafter(float(x + offset.x() + 1), 0.f));
                 pixelSample.y() = std::min(pixelSample.y(), std::nextafter(float(y + offset.y() + 1), 0.f));
-                Point2f apertureSample = sampler->next2D();
+                Point2f apertureSample = Warp::squareToUniformDisk(sampler->next2D());
 
                 /* Sample a ray from the camera */
                 Ray3f ray;
