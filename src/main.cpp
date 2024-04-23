@@ -50,15 +50,14 @@ static void renderBlock(Scene *scene, Sampler *sampler,
   /* Clear the block contents */
   block.clear();
 
-    /* Store Standard Deviation */
-    // Eigen::MatrixXf sd(size.y(), size.x());
-
     /* For each pixel and pixel sample sample */
     for (int y=0; y<size.y(); ++y) {
         for (int x=0; x<size.x(); ++x) {
             block.emptySDBuffer();  // for computing the standard deviation of current pixel's value
             Point2f pixelSample = Point2f(float(x + offset.x()), float(y + offset.y())) + Point2f(0.5f, 0.5f);  // go through the centre of the pixel
-            for (uint32_t i=0; i<sampler->getSampleCount(); ++i) {
+
+            /* First sample each pixel 100 times so that we have an estimate of its SD */
+            for (uint32_t i=0; i<100; ++i) {
                 pixelSample.x() = std::min(pixelSample.x(), std::nextafter(float(x + offset.x() + 1), 0.f));
                 pixelSample.y() = std::min(pixelSample.y(), std::nextafter(float(y + offset.y() + 1), 0.f));
                 Point2f apertureSample = Warp::squareToUniformDisk(sampler->next2D());
@@ -73,14 +72,36 @@ static void renderBlock(Scene *scene, Sampler *sampler,
                 value *= integrator->Li(scene, sampler, ray);
 
                 /* Store in the image block */
-                // block.put(pixelSample, value);
                 block.pushBackSDBuffer(value.sum() / 3);
             }
 
             /* Compute Standard Deviation (SD) */
             float sd = standardDeviation(block.getSDBuffer());
+            // block.put(pixelSample, Color3f(sd));
             // cout << "SD: " << sd << endl;
-            block.put(pixelSample, Color3f(sd));
+
+            int sample_cnt = 25 - sd;
+            if (sample_cnt < 0)
+                sample_cnt = 0;
+            sample_cnt = sampler->getSampleCount() / 2 + sampler->getSampleCount() / 2 * sample_cnt / 20;
+            for (uint32_t i=0; i < sample_cnt; ++i) {
+                pixelSample.x() = std::min(pixelSample.x(), std::nextafter(float(x + offset.x() + 1), 0.f));
+                pixelSample.y() = std::min(pixelSample.y(), std::nextafter(float(y + offset.y() + 1), 0.f));
+                Point2f apertureSample = Warp::squareToUniformDisk(sampler->next2D());
+
+                /* Sample a ray from the camera */
+                Ray3f ray;
+                float motionBlurTime = sampler->next1D();
+                camera->animate(motionBlurTime);  // move the camera for motion blur
+                Color3f value = camera->sampleRay(ray, pixelSample, apertureSample);
+
+                /* Compute the incident radiance */
+                value *= integrator->Li(scene, sampler, ray);
+
+                /* Store in the image block */
+                block.put(pixelSample, value);
+                block.pushBackSDBuffer(value.sum() / 3);
+            }
         }
     }
 }
