@@ -47,7 +47,7 @@ public:
     Integrator *getIntegrator() { return m_integrator; }
 
     /// Return a pointer to the scene's camera
-    const Camera *getCamera() const { return m_camera; }
+    Camera *getCamera() { return m_camera; }
 
     /// Return a pointer to the scene's sample generator (const version)
     const Sampler *getSampler() const { return m_sampler; }

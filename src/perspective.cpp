@@ -40,6 +40,10 @@ public:
         /* Specifies an optional camera-to-world transformation. Default: none */
         m_cameraToWorld = propList.getTransform("toWorld", Transform());
 
+        /* Specify camera velocity for motion blur */
+        m_cameraToWorldOriginal = m_cameraToWorld;
+        velocity = propList.getVector("motionBlurVelocity", Vector3f(0.f));
+
         /* Horizontal field of view in degrees */
         m_fov = propList.getFloat("fov", 30.0f);
 
@@ -122,6 +126,18 @@ public:
         }
     }
 
+    // For motion blur
+    void animate(const float &time) {
+        Eigen::Matrix4f translationMatrix;
+        Vector3f translation = time * velocity;
+        translationMatrix <<
+            1, 0, 0, translation(0),
+            0, 1, 0, translation(1),
+            0, 0, 1, translation(2),
+            0, 0, 0, 1;
+        m_cameraToWorld = Transform(translationMatrix) * m_cameraToWorldOriginal;
+    }
+
     /// Return a human-readable summary
     std::string toString() const {
         return tfm::format(
@@ -147,6 +163,10 @@ private:
     float m_fov;
     float m_nearClip;
     float m_farClip;
+
+    /* For motion blur */
+    Transform m_cameraToWorldOriginal;  // Original camera transformation
+    Vector3f velocity;  // Camera velocity
 };
 
 NORI_REGISTER_CLASS(PerspectiveCamera, "perspective");

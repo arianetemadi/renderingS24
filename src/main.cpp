@@ -37,9 +37,9 @@ using namespace nori;
 static int threadCount = -1;
 static bool gui = true;
 
-static void renderBlock(const Scene *scene, Sampler *sampler,
+static void renderBlock(Scene *scene, Sampler *sampler,
                         ImageBlock &block) {
-  const Camera *camera = scene->getCamera();
+  Camera *camera = scene->getCamera();
   const Integrator *integrator = scene->getIntegrator();
 
   Point2i offset = block.getOffset();
@@ -57,18 +57,20 @@ static void renderBlock(const Scene *scene, Sampler *sampler,
                 pixelSample.y() = std::min(pixelSample.y(), std::nextafter(float(y + offset.y() + 1), 0.f));
                 Point2f apertureSample = sampler->next2D();
 
-        /* Sample a ray from the camera */
-        Ray3f ray;
-        Color3f value = camera->sampleRay(ray, pixelSample, apertureSample);
+                /* Sample a ray from the camera */
+                Ray3f ray;
+                float motionBlurTime = sampler->next1D();
+                camera->animate(motionBlurTime);  // move the camera for motion blur
+                Color3f value = camera->sampleRay(ray, pixelSample, apertureSample);
 
-        /* Compute the incident radiance */
-        value *= integrator->Li(scene, sampler, ray);
+                /* Compute the incident radiance */
+                value *= integrator->Li(scene, sampler, ray);
 
-        /* Store in the image block */
-        block.put(pixelSample, value);
-      }
+                /* Store in the image block */
+                block.put(pixelSample, value);
+            }
+        }
     }
-  }
 }
 
 static void render(Scene *scene, const std::string &filename) {

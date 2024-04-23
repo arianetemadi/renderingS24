@@ -57,6 +57,9 @@ public:
         const Point2f &samplePosition,
         const Point2f &apertureSample) const = 0;
 
+    // For motion blur
+    virtual void animate(const float& time) = 0;
+
     /// Return the size of the output image in pixels
     const Vector2i &getOutputSize() const { return m_outputSize; }
 

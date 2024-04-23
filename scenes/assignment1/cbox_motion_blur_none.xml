@@ -5,7 +5,7 @@
 		<boolean name="rr" value="true"/>
     </integrator>
 	<sampler type="independent">
-		<integer name="sampleCount" value="1024"/>
+		<integer name="sampleCount" value="4096"/>
 	</sampler>
 	<camera type="perspective">
 		<float name="fov" value="35.14625251087677"/>
@@ -17,7 +17,7 @@
 			<scale value="1.000000 1.000000 -1.000000"/>
 			<matrix value="1.0,-2.279973153091093e-14,3.019916050561733e-07,-277.99993896484375,3.019916050561733e-07,7.549790126404332e-08,-1.0,-766.3980102539062,0.0,1.0,7.549790126404332e-08,273.0,0.0,0.0,0.0,1.0"/>
 		</transform>
-		<vector name="motionBlurVelocity" value="30 0 0" />
+		<vector name="motionBlurVelocity" value="0 0 0" />
 	</camera>
     <mesh type="parallelogram">
 		<string name="name" value="light"/>

@@ -5,7 +5,7 @@
 		<boolean name="rr" value="true"/>
     </integrator>
 	<sampler type="independent">
-		<integer name="sampleCount" value="1024"/>
+		<integer name="sampleCount" value="4096"/>
 	</sampler>
 	<camera type="perspective">
 		<float name="fov" value="35.14625251087677"/>
