@@ -21,6 +21,7 @@
 #include <Eigen/LU>
 #include <filesystem/resolver.h>
 #include <iomanip>
+#include <vector>
 
 #if defined(PLATFORM_LINUX)
 #include <malloc.h>
@@ -266,6 +267,26 @@ void coordinateSystem(const Vector3f &a, Vector3f &b, Vector3f &c) {
         c = Vector3f(0.0f, a.z() * invLen, -a.y() * invLen);
     }
     b = c.cross(a);
+}
+
+/// Function for computing the standard deviation of a list of samples
+float standardDeviation(const std::vector<float>& samples) {
+    // Calculate Mean first
+    float mean = 0;
+    for (int i = 0; i < samples.size(); i++) {
+        mean += samples[i];
+    }
+    mean /= samples.size();
+
+    // Then calculate Standard Deviation
+    float sd = 0;
+    for (int i = 0; i < samples.size(); i++) {
+        float tmp = samples[i] - mean;
+        sd += tmp * tmp;
+    }
+    sd /= samples.size();
+
+    return sd;
 }
 
 NORI_NAMESPACE_END

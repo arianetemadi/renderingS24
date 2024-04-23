@@ -27,6 +27,7 @@
 #include <nori/scene.h>
 #include <nori/timer.h>
 #include <nori/warp.h>
+#include <nori/common.h>
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
@@ -49,11 +50,15 @@ static void renderBlock(Scene *scene, Sampler *sampler,
   /* Clear the block contents */
   block.clear();
 
+    /* Store Standard Deviation */
+    // Eigen::MatrixXf sd(size.y(), size.x());
+
     /* For each pixel and pixel sample sample */
     for (int y=0; y<size.y(); ++y) {
         for (int x=0; x<size.x(); ++x) {
+            block.emptySDBuffer();  // for computing the standard deviation of current pixel's value
+            Point2f pixelSample = Point2f(float(x + offset.x()), float(y + offset.y())) + Point2f(0.5f, 0.5f);  // go through the centre of the pixel
             for (uint32_t i=0; i<sampler->getSampleCount(); ++i) {
-                Point2f pixelSample = Point2f(float(x + offset.x()), float(y + offset.y())) + Point2f(0.5f, 0.5f);  // go through the centre of the pixel
                 pixelSample.x() = std::min(pixelSample.x(), std::nextafter(float(x + offset.x() + 1), 0.f));
                 pixelSample.y() = std::min(pixelSample.y(), std::nextafter(float(y + offset.y() + 1), 0.f));
                 Point2f apertureSample = Warp::squareToUniformDisk(sampler->next2D());
@@ -68,8 +73,14 @@ static void renderBlock(Scene *scene, Sampler *sampler,
                 value *= integrator->Li(scene, sampler, ray);
 
                 /* Store in the image block */
-                block.put(pixelSample, value);
+                // block.put(pixelSample, value);
+                block.pushBackSDBuffer(value.sum() / 3);
             }
+
+            /* Compute Standard Deviation (SD) */
+            float sd = standardDeviation(block.getSDBuffer());
+            // cout << "SD: " << sd << endl;
+            block.put(pixelSample, Color3f(sd));
         }
     }
 }

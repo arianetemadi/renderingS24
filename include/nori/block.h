@@ -25,6 +25,7 @@
 #include <nori/color.h>
 #include <nori/vector.h>
 #include <tbb/mutex.h>
+#include <vector>
 
 #define NORI_BLOCK_SIZE 32 /* Block size used for parallelization */
 
@@ -105,6 +106,15 @@ public:
     /// Unlock the image block
     inline void unlock() const { m_mutex.unlock(); }
 
+    /// Get the standard deviation buffer
+    inline std::vector<float>& getSDBuffer() { return sd_buffer; }
+
+    /// Push-back into the standard deviation buffer
+    inline void pushBackSDBuffer(const float &value) { sd_buffer.push_back(value); }
+
+    /// Empty the current_pixel_samples buffer
+    inline void emptySDBuffer() { sd_buffer.clear(); }
+
     /// Return a human-readable string summary
     std::string toString() const;
 protected:
@@ -117,6 +127,7 @@ protected:
     float *m_weightsY = nullptr;
     float m_lookupFactor = 0;
     mutable tbb::mutex m_mutex;
+    std::vector<float> sd_buffer;
 };
 
 /**

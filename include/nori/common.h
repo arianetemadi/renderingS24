@@ -251,4 +251,6 @@ extern Point2f sphericalCoordinates(const Vector3f &dir);
  */
 extern filesystem::resolver *getFileResolver();
 
+float standardDeviation(const std::vector<float>& samples);
+
 NORI_NAMESPACE_END
