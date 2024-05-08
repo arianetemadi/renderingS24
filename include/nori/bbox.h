@@ -19,6 +19,8 @@
 #pragma once
 
 #include <nori/ray.h>
+#include <iostream>
+#include <fstream>
 
 NORI_NAMESPACE_BEGIN
 
@@ -329,6 +331,27 @@ template <typename _PointType> struct TBoundingBox {
             return "BoundingBox[invalid]";
         else
             return tfm::format("BoundingBox[min=%s, max=%s]", min.toString(), max.toString());
+    }
+
+    /// Append lines to an .obj file
+    static void writeOBJ(std::string filename, std::vector<TBoundingBox>& bboxes) {
+        // open file
+        std::ofstream file(filename);
+        file << "Bounding boxes..." << endl;
+
+        // print all vertices
+        for (TBoundingBox bbox : bboxes) {
+            for (int i = 0; i < 8; i++) {
+                Point3f corner = bbox.getCorner(i);
+                file << "v " << corner(0) << ' ' << corner(1) << ' ' << corner(2) << endl;
+            }
+        }
+
+        // print all lines
+        
+
+        // close the file
+        file.close();
     }
 
     /// Check if a ray intersects a bounding box

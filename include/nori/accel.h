@@ -100,16 +100,18 @@ private:
 
             }
 
-            void build(std::vector<int>& triangleIndices, const Mesh* mesh) {
+            void build(std::vector<int>& triangleIndices, const Mesh* mesh, std::vector<BoundingBox3f>& bboxes) {
+                bboxes.push_back(bbox);
                 // cout << this << " My range: " << triRange[0] << " " << triRange[1] << endl;
                 // cout << " My bbox: " << bbox.toString() << endl; 
-                if (nTriangles() <= 2) {  // leaf node
+                if (nTriangles() <= 1) {  // leaf node
 
                 } else {  // interior node
                     isInterior = true;
                     
                     // choose the largest axis for splitting
                     splitAxis = bbox.getLargestAxis();
+                    // splitAxis = 0;
 
                     // sort your range of triangles into two groups, with nelements function
                     int median = nTriangles() / 2;
@@ -131,8 +133,8 @@ private:
                     children[0] = &left;
                     children[1] = &right;
 
-                    left.build(triangleIndices, mesh);                    
-                    right.build(triangleIndices, mesh);
+                    left.build(triangleIndices, mesh, bboxes);                    
+                    right.build(triangleIndices, mesh, bboxes);
                 }
             }
 
@@ -158,13 +160,33 @@ private:
         };
 
         void build() {
+            std::vector<BoundingBox3f> bboxes;
             // init root
             root.triRange[0] = 0;
             root.triRange[1] = triangleIndices.size();
             root.bbox = mesh->getBoundingBox();
 
+            // root.computeBoundingBox(triangleIndices, mesh);
+
             // start building the tree recursively
-            root.build(triangleIndices, mesh);
+            root.build(triangleIndices, mesh, bboxes);
+
+            // print the whole triangleIndices vector, todo: why is not almost sorted, but not fully?
+            // for (int i = 0; i < triangleIndices.size() && i < 200; i++) {
+            //     auto t = triangleIndices[i];
+            //     cout << mesh->getCentroid(t)[0] << endl;
+            // }
+
+            // bounding box computing sanity check:
+            // cout << "Mesh BBOX: " << mesh->getBoundingBox().toString() << endl;
+            // root.computeBoundingBox(triangleIndices, mesh);
+            // cout << "Acc. BBOX: " << root.bbox.toString() << endl;
+
+            // write to .obj file
+            std::string filename = "./bboxes.obj";
+           
+
+            BoundingBox3f::writeOBJ(filename, bboxes);
 
             cout << "root build finished." << endl;
         }
@@ -180,6 +202,8 @@ private:
         std::vector<int> triangleIndices;
         // todo: preprocess bounding boxes and cenetroids
 	};
+
+    static std::vector<BoundingBox3f> bboxes;
 
 	std::vector<BVH> m_bvhs;
 
