@@ -19,6 +19,8 @@
 #pragma once
 
 #include <nori/mesh.h>
+#include <vector>
+#include <numeric>
 
 NORI_NAMESPACE_BEGIN
 
@@ -70,20 +72,113 @@ private:
 	/*
 	Assignment 2: Extend this class!
 	*/
-	class BVH
-	{
-	private:
-		const Mesh* mesh;
-
-	public:
-
+	class BVH {
+	 public:
 		BVH(const Mesh* mesh) : mesh(mesh)
-		{}
+		{
+            cout << "BVH instantiated!" << endl;
+
+            // initialize the triangle index vector
+            triangleIndices = std::vector<int>(mesh->getTriangleCount());
+            std::iota(std::begin(triangleIndices), std::end(triangleIndices), 0);
+
+        }
+
+        // enum class Type {
+        //     Middle,
+        //     Median,
+        //     SAH,
+        // };
+
+        struct Node {
+            void initInterior (int leftRange, int rightRange) {
+                triRange[0] = leftRange;
+                triRange[1] = rightRange;
+            }
+            
+            void initLeaf () {
+
+            }
+
+            void build(std::vector<int>& triangleIndices, const Mesh* mesh) {
+                // cout << this << " My range: " << triRange[0] << " " << triRange[1] << endl;
+                // cout << " My bbox: " << bbox.toString() << endl; 
+                if (nTriangles() <= 2) {  // leaf node
+
+                } else {  // interior node
+                    isInterior = true;
+                    
+                    // choose the largest axis for splitting
+                    splitAxis = bbox.getLargestAxis();
+
+                    // sort your range of triangles into two groups, with nelements function
+                    int median = nTriangles() / 2;
+                    std::nth_element(triangleIndices.begin(), triangleIndices.begin() + median, triangleIndices.end(), 
+                    [&](const int& lhs, const int& rhs)
+                    {
+                        Point3f c_lhs = mesh->getCentroid(lhs);
+                        Point3f c_rhs = mesh->getCentroid(rhs);
+                        return c_lhs[splitAxis] < c_rhs[splitAxis];
+                    });
+
+                    // recursively call on left and right groups
+                    Node left, right;
+                    left.initInterior(triRange[0], triRange[0] + median);
+                    right.initInterior(triRange[0] + median, triRange[1]);
+                    left.computeBoundingBox(triangleIndices, mesh);
+                    right.computeBoundingBox(triangleIndices, mesh);
+
+                    children[0] = &left;
+                    children[1] = &right;
+
+                    left.build(triangleIndices, mesh);                    
+                    right.build(triangleIndices, mesh);
+                }
+            }
+
+            void computeBoundingBox(std::vector<int>& triangleIndices, const Mesh* mesh) {
+                // start with the bounding box of the first triangle
+                bbox = mesh->getBoundingBox(triangleIndices[triRange[0]]);
+
+                // expand by looping through the rest
+                for (int i = triRange[0] + 1; i < triRange[1]; i++) {
+                    bbox.expandBy(mesh->getBoundingBox(triangleIndices[i]));
+                }
+            }
+
+            int nTriangles() {
+                return triRange[1] - triRange[0];
+            }
+
+            BoundingBox3f bbox;
+            Node *children[2];
+            int splitAxis;  // 0, 1, 2 for x, y, z
+            int triRange[2];  // [inclusive, exclusive), continuous range of triangles in the triangleIndices vector
+            bool isInterior = false;
+        };
+
+        void build() {
+            // init root
+            root.triRange[0] = 0;
+            root.triRange[1] = triangleIndices.size();
+            root.bbox = mesh->getBoundingBox();
+
+            // start building the tree recursively
+            root.build(triangleIndices, mesh);
+
+            cout << "root build finished." << endl;
+        }
 
 		const Mesh* getMesh() const
 		{
 			return mesh;
 		}
+
+     private:
+		const Mesh* mesh;
+        Node root;
+        std::vector<int> triangleIndices;
+        // todo: preprocess bounding boxes and cenetroids
 	};
 
 	std::vector<BVH> m_bvhs;

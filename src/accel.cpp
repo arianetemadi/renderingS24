@@ -31,13 +31,9 @@ void Accel::addMesh(Mesh *mesh)
 void Accel::build() 
 {
 	auto before = std::chrono::system_clock::now();
-	for (BVH& bvh : m_bvhs)
+	for (BVH& bvh : m_bvhs)  // TODO: improve this loop
 	{
-		/* 
-		   Assignment 2
-		   Nothing to do here for now.
-		   Make sure to build your BVH for each mesh here!
-		*/
+		bvh.build();
 	} 
 	auto after = std::chrono::system_clock::now();
 
