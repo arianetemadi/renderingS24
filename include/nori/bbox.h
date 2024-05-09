@@ -337,7 +337,7 @@ template <typename _PointType> struct TBoundingBox {
     static void writeOBJ(std::string filename, std::vector<TBoundingBox>& bboxes) {
         // open file
         std::ofstream file(filename);
-        file << "Bounding boxes..." << endl;
+        file << "# Bounding boxes..." << endl;
 
         // print all vertices
         for (TBoundingBox bbox : bboxes) {
@@ -348,7 +348,18 @@ template <typename _PointType> struct TBoundingBox {
         }
 
         // print all lines
-        
+        for (int bbox_ind = 0; bbox_ind < bboxes.size(); bbox_ind++) {
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < i; j++) {
+                    int x = i ^ j;
+                    if (x == 1 || x == 2 || x == 4) {
+                        int ni = bbox_ind * 8 + i + 1;
+                        int nj = bbox_ind * 8 + j + 1;
+                        file << "l " << ni << ' ' << nj << endl;
+                    }
+                }
+            }
+        }
 
         // close the file
         file.close();

@@ -104,7 +104,7 @@ private:
                 bboxes.push_back(bbox);
                 // cout << this << " My range: " << triRange[0] << " " << triRange[1] << endl;
                 // cout << " My bbox: " << bbox.toString() << endl; 
-                if (nTriangles() <= 1) {  // leaf node
+                if (nTriangles() <= 10) {  // leaf node
 
                 } else {  // interior node
                     isInterior = true;
@@ -185,8 +185,9 @@ private:
             // write to .obj file
             std::string filename = "./bboxes.obj";
            
-
-            BoundingBox3f::writeOBJ(filename, bboxes);
+            // if (mesh->getVertexCount() == 6 && mesh->getTriangleCount() == 8) {
+                BoundingBox3f::writeOBJ(filename, bboxes);
+            // }
 
             cout << "root build finished." << endl;
         }
