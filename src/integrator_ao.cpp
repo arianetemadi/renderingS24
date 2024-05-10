@@ -23,10 +23,9 @@ public:
         shadow_ray.mint = Epsilon;
         shadow_ray.maxt = scene->getBoundingBox().getExtents().norm();
         shadow_ray.update();
-        Intersection shadow_its;
 
         /* Return black if hit something */
-        if (scene->rayIntersect(shadow_ray, shadow_its)) {
+        if (scene->rayIntersect(shadow_ray)) {
             return Color3f(0.0f);
         }
 

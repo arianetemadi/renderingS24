@@ -56,6 +56,7 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
 		   brute-force loop is replaced by something more effective. 
 		*/
         int triInd = bvh.rayIntersection(ray, its, shadowRay);
+        if (triInd == -2) return true;  // -2: shadow ray
         if (triInd != -1) {
             foundIntersection = true;
             closestIdx = triInd;
