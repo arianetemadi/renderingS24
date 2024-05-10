@@ -90,6 +90,14 @@ private:
         //     Median,
         //     SAH,
         // };
+        struct alignas(32) CompactNode {  // TODO: play with alignas(32)
+            BoundingBox3f bbox;
+            int nLeafTriangles;  // IMPORTANT: 0 for interior nodes!
+            union {
+                int triRange0;
+                int rightChildInd;
+            };
+        };
 
         struct Node {
             Node (int leftRange, int rightRange) {
@@ -98,12 +106,21 @@ private:
             }
             
             void build(std::vector<int>& triangleIndices, const Mesh* mesh,
-                const std::vector<BoundingBox3f>& bboxes, const std::vector<Point3f>& centroids) {
+                const std::vector<BoundingBox3f>& bboxes, const std::vector<Point3f>& centroids,
+                std::vector<CompactNode> compactBVH) {  // TODO: try array
+                
+                // compactly save this node
+                CompactNode cn;
+                cn.bbox = bbox;
+                
                 if (nTriangles() <= 20) {  // leaf node
-
+                    cn.nLeafTriangles = nTriangles();
+                    cn.triRange0 = triRange[0];
+                    compactBVH.push_back(cn);
                 }
                 else {  // interior node
                     isInterior = true;
+                    cn.nLeafTriangles = 0;
                     
                     // choose the largest axis for splitting
                     splitAxis = bbox.getLargestAxis();
@@ -125,8 +142,15 @@ private:
                     children[0]->computeBoundingBox(triangleIndices, mesh, bboxes);
                     children[1]->computeBoundingBox(triangleIndices, mesh, bboxes);
 
-                    children[0]->build(triangleIndices, mesh, bboxes, centroids);                    
-                    children[1]->build(triangleIndices, mesh, bboxes, centroids);
+                    compactBVH.push_back(cn);
+                    int currentCNInd = compactBVH.size() - 1;
+
+                    children[0]->build(triangleIndices, mesh, bboxes, centroids, compactBVH);   
+
+                    int secondChildCNInd = compactBVH.size();
+                    compactBVH[currentCNInd].rightChildInd = secondChildCNInd;
+
+                    children[1]->build(triangleIndices, mesh, bboxes, centroids, compactBVH);
                 }
             }
 
@@ -209,7 +233,7 @@ private:
             root->bbox = mesh->getBoundingBox();
 
             // start building the tree recursively
-            root->build(triangleIndices, mesh, bboxes, centroids);
+            root->build(triangleIndices, mesh, bboxes, centroids, compactBVH);
 
             // // write to .obj file
             // std::string filename = "./bboxes.obj";
@@ -294,6 +318,9 @@ private:
         std::vector<BoundingBox3f> bboxes;
         // cached centroids of triangles
         std::vector<Point3f> centroids;
+
+        // compact representation of the BVH tree for faster traversal
+        std::vector<CompactNode> compactBVH;
 	};
 
     // static std::vector<BoundingBox3f> bboxes;
