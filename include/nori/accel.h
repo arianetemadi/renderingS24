@@ -96,8 +96,9 @@ private:
                 triRange[1] = rightRange;
             }
             
-            void build(std::vector<int>& triangleIndices, const Mesh* mesh) {
-                if (nTriangles() <= 5) {  // leaf node
+            void build(std::vector<int>& triangleIndices, const Mesh* mesh,
+                const std::vector<BoundingBox3f>& bboxes, const std::vector<Point3f>& centroids) {
+                if (nTriangles() <= 20) {  // leaf node
 
                 }
                 else {  // interior node
@@ -112,24 +113,25 @@ private:
                                     triangleIndices.begin() + median, triangleIndices.begin() + triRange[1], 
                                     [&](const int& lhs, const int& rhs)
                                     {
-                                        Point3f c_lhs = mesh->getCentroid(lhs);
-                                        Point3f c_rhs = mesh->getCentroid(rhs);
+                                        Point3f c_lhs = centroids[lhs];
+                                        Point3f c_rhs = centroids[rhs];
                                         return c_lhs[splitAxis] < c_rhs[splitAxis];
                                     });
 
                     // recursively call on left and right groups
                     children[0] = new Node(triRange[0], median);
                     children[1] = new Node(median, triRange[1]);
-                    children[0]->computeBoundingBox(triangleIndices, mesh);
-                    children[1]->computeBoundingBox(triangleIndices, mesh);
+                    children[0]->computeBoundingBox(triangleIndices, mesh, bboxes);
+                    children[1]->computeBoundingBox(triangleIndices, mesh, bboxes);
 
-                    children[0]->build(triangleIndices, mesh);                    
-                    children[1]->build(triangleIndices, mesh);
+                    children[0]->build(triangleIndices, mesh, bboxes, centroids);                    
+                    children[1]->build(triangleIndices, mesh, bboxes, centroids);
                 }
             }
 
             // for traversing the bvh recursively
-            int rayIntersect(const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray, Intersection &its, bool shadowRay) const {
+            int rayIntersect(const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray,
+                Intersection &its, bool shadowRay) const {
                 // if node is interior
                 if (isInterior) {
                     // check if ray hits the children bounding boxes
@@ -145,14 +147,14 @@ private:
                     int i = (nearT[0] < nearT[1]) ? 0 : 1;
                     if (boxHit[i]) {
                         triInd[i] = children[i]->rayIntersect(triangleIndices, mesh, ray, its, shadowRay);
-                        if (triInd[i] == -2) return -2;
+                        if (triInd[i] == -2) return -2;  // shadow ray
                     }
                     // recalculate the box hit for the second child
                     // in case the ray has been shortened by intersections in the first child
                     boxHit[1 - i] = children[1 - i]->bbox.rayIntersect(ray) || children[1 - i]->bbox.contains(ray.o);
                     if (boxHit[1 - i]) {
                         triInd[1 - i] = children[1 - i]->rayIntersect(triangleIndices, mesh, ray, its, shadowRay);
-                        if (triInd[1 - i] == -2) return -2;
+                        if (triInd[1 - i] == -2) return -2;  // shadow ray
                     }
                     return (triInd[1 - i] == -1) ? triInd[i] : triInd[1 - i];
                 }
@@ -172,13 +174,14 @@ private:
                 }
             }
 
-            void computeBoundingBox(std::vector<int>& triangleIndices, const Mesh* mesh) {
+            void computeBoundingBox(std::vector<int>& triangleIndices, const Mesh* mesh,
+                const std::vector<BoundingBox3f>& bboxes) {
                 // start with the bounding box of the first triangle
-                bbox = mesh->getBoundingBox(triangleIndices[triRange[0]]);
+                bbox = bboxes[triangleIndices[triRange[0]]];
 
                 // expand by looping through the rest
                 for (int i = triRange[0] + 1; i < triRange[1]; i++) {
-                    bbox.expandBy(mesh->getBoundingBox(triangleIndices[i]));
+                    bbox.expandBy(bboxes[triangleIndices[i]]);
                 }
             }
 
@@ -194,18 +197,24 @@ private:
         };
 
         void build() {
+            // cache bounding boxes and centroids of all triangles
+            for (int i = 0; i < mesh->getTriangleCount(); i++) {
+                bboxes.push_back(mesh->getBoundingBox(i));
+                centroids.push_back(mesh->getCentroid(i));
+            }
+
             // init root
             root = new Node(0, triangleIndices.size());
             root->bbox = mesh->getBoundingBox();
 
             // start building the tree recursively
-            root->build(triangleIndices, mesh);
+            root->build(triangleIndices, mesh, bboxes, centroids);
 
             // // write to .obj file
             // std::string filename = "./bboxes.obj";
            
             // // if (mesh->getVertexCount() == 6 && mesh->getTriangleCount() == 8) {
-            //     BoundingBox3f::writeOBJ(filename, bboxes);
+                // BoundingBox3f::writeOBJ(filename, bboxes);
             // // }
 
             cout << "root build finished." << endl;
@@ -229,10 +238,14 @@ private:
 		const Mesh* mesh;
         Node* root;
         std::vector<int> triangleIndices;
-        // todo: preprocess bounding boxes and cenetroids
+
+        // cached bounding boxes of triangles
+        std::vector<BoundingBox3f> bboxes;
+        // cached centroids of triangles
+        std::vector<Point3f> centroids;
 	};
 
-    static std::vector<BoundingBox3f> bboxes;
+    // static std::vector<BoundingBox3f> bboxes;
 
 	std::vector<BVH> m_bvhs;
 
