@@ -21,6 +21,7 @@
 #include <nori/mesh.h>
 #include <vector>
 #include <numeric>
+#include <stack>
 
 NORI_NAMESPACE_BEGIN
 
@@ -129,8 +130,8 @@ private:
                 }
             }
 
-            // for traversing the bvh recursively
-            int rayIntersect(const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray,
+            // for traversing the BVH recursively
+            int rayIntersectRecursive(const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray,
                 Intersection &its, bool shadowRay) const {
                 // if node is interior
                 if (isInterior) {
@@ -146,14 +147,14 @@ private:
                     // recurse into children nodes, open the closer one first
                     int i = (nearT[0] < nearT[1]) ? 0 : 1;
                     if (boxHit[i]) {
-                        triInd[i] = children[i]->rayIntersect(triangleIndices, mesh, ray, its, shadowRay);
+                        triInd[i] = children[i]->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
                         if (triInd[i] == -2) return -2;  // shadow ray
                     }
                     // recalculate the box hit for the second child
                     // in case the ray has been shortened by intersections in the first child
                     boxHit[1 - i] = children[1 - i]->bbox.rayIntersect(ray) || children[1 - i]->bbox.contains(ray.o);
                     if (boxHit[1 - i]) {
-                        triInd[1 - i] = children[1 - i]->rayIntersect(triangleIndices, mesh, ray, its, shadowRay);
+                        triInd[1 - i] = children[1 - i]->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
                         if (triInd[1 - i] == -2) return -2;  // shadow ray
                     }
                     return (triInd[1 - i] == -1) ? triInd[i] : triInd[1 - i];
@@ -220,13 +221,63 @@ private:
             cout << "root build finished." << endl;
         }
 
+        // for traversing the BVH iteratively (more efficient)
+        int rayIntersectIterative(Node* start, const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray,
+            Intersection &its, bool shadowRay) const {
+            
+            std::stack<Node*> nodes;
+            nodes.push(start);
+            int triInd = -1;  // assume no hit
+            while (!nodes.empty()) {
+                // remove the first node in the stack
+                Node* node = nodes.top();
+                nodes.pop();
+
+                // if ray origin is outside the box and ray does not hit the box
+                if (!node->bbox.contains(ray.o) && !node->bbox.rayIntersect(ray)) {
+                    continue;
+                }
+
+                // if node is interior
+                if (node->isInterior) {
+                    Node *children[2];
+                    children[0] = node->children[0];
+                    children[1] = node->children[1];
+                    // check if ray hits the children bounding boxes
+                    float nearT[2], farT[2];
+                    children[0]->bbox.rayIntersect(ray, nearT[0], farT[0]) || children[0]->bbox.contains(ray.o);
+                    children[1]->bbox.rayIntersect(ray, nearT[1], farT[1]) || children[1]->bbox.contains(ray.o);
+
+                    // recurse into children nodes, open the closer one first
+                    int i = (nearT[0] < nearT[1]) ? 0 : 1;
+                    nodes.push(children[1 - i]);
+                    nodes.push(children[i]);
+                }
+                else {  // node is a leaf
+                    // loop over all triangles in this leaf
+                    for (int i = node->triRange[0]; i < node->triRange[1]; i++) {
+                        // test for intersection
+                        if (Accel::testTriangle(mesh, triangleIndices[i], ray, shadowRay, its)) {
+                            if (shadowRay) return -2;
+                            triInd = triangleIndices[i];
+                            // shorten the ray to this intersection
+                            ray.maxt = its.t;
+                        }
+                    }
+                }
+            }
+
+            return triInd;
+        }
+
         int rayIntersection(Ray3f &ray, Intersection &its, bool shadowRay) const {
             // check if ray hits the root bounding box first
             if (!root->bbox.rayIntersect(ray) && !root->bbox.contains(ray.o)) {
                 return -1;
             }
             
-            return root->rayIntersect(triangleIndices, mesh, ray, its, shadowRay);
+            // return root->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
+            return rayIntersectIterative(root, triangleIndices, mesh, ray, its, shadowRay);
         }
 
 		const Mesh* getMesh() const
