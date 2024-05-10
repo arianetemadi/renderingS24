@@ -46,7 +46,7 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
 
     Ray3f ray(ray_); /// Make a copy of the ray (we will need to update its '.maxt' value)
 
-	for (const BVH& bvh : m_bvhs)
+	for (const BVH& bvh : m_bvhs)  // TODO: improve this loop
 	{
 		const Mesh* mesh = bvh.getMesh();
 		
@@ -55,19 +55,26 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
 		   Make sure to perform an efficient scenen traversal here, such that the 
 		   brute-force loop is replaced by something more effective. 
 		*/
-		for (uint32_t idx = 0; idx < mesh->getTriangleCount(); ++idx)
-		{
-			if (testTriangle(mesh, idx, ray, shadowRay, its)) 
-            {
-                if (shadowRay) return true;
-                /* This intersection is now considered as the closest one. Thus we
-                    will shorten this ray and set index of the closest intersection
-                    to the index of this triangle */
-                foundIntersection = true;
-                ray.maxt = its.t; // No need to check for triangles behind this one
-                closestIdx = idx;
-            }
-		}
+        int triInd = bvh.rayIntersection(ray, its, shadowRay);
+        if (triInd != -1) {
+            foundIntersection = true;
+            closestIdx = triInd;
+        }
+
+
+		// for (uint32_t idx = 0; idx < mesh->getTriangleCount(); ++idx)
+		// {
+		// 	if (testTriangle(mesh, idx, ray, shadowRay, its)) 
+        //     {
+        //         if (shadowRay) return true;
+        //         /* This intersection is now considered as the closest one. Thus we
+        //             will shorten this ray and set index of the closest intersection
+        //             to the index of this triangle */
+        //         foundIntersection = true;
+        //         ray.maxt = its.t; // No need to check for triangles behind this one
+        //         closestIdx = idx;
+        //     }
+		// }
 	}
 
     if (foundIntersection) {

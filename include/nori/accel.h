@@ -91,50 +91,86 @@ private:
         // };
 
         struct Node {
-            void initInterior (int leftRange, int rightRange) {
+            Node (int leftRange, int rightRange) {
                 triRange[0] = leftRange;
                 triRange[1] = rightRange;
             }
             
-            void initLeaf () {
+            void build(std::vector<int>& triangleIndices, const Mesh* mesh) {
+                if (nTriangles() <= 5) {  // leaf node
 
-            }
-
-            void build(std::vector<int>& triangleIndices, const Mesh* mesh, std::vector<BoundingBox3f>& bboxes) {
-                bboxes.push_back(bbox);
-                // cout << this << " My range: " << triRange[0] << " " << triRange[1] << endl;
-                // cout << " My bbox: " << bbox.toString() << endl; 
-                if (nTriangles() <= 10) {  // leaf node
-
-                } else {  // interior node
+                }
+                else {  // interior node
                     isInterior = true;
                     
                     // choose the largest axis for splitting
                     splitAxis = bbox.getLargestAxis();
-                    // splitAxis = 0;
 
                     // sort your range of triangles into two groups, with nelements function
-                    int median = nTriangles() / 2;
-                    std::nth_element(triangleIndices.begin(), triangleIndices.begin() + median, triangleIndices.end(), 
-                    [&](const int& lhs, const int& rhs)
-                    {
-                        Point3f c_lhs = mesh->getCentroid(lhs);
-                        Point3f c_rhs = mesh->getCentroid(rhs);
-                        return c_lhs[splitAxis] < c_rhs[splitAxis];
-                    });
+                    int median = triRange[0] + nTriangles() / 2;
+                    std::nth_element(triangleIndices.begin() + triRange[0],
+                                    triangleIndices.begin() + median, triangleIndices.begin() + triRange[1], 
+                                    [&](const int& lhs, const int& rhs)
+                                    {
+                                        Point3f c_lhs = mesh->getCentroid(lhs);
+                                        Point3f c_rhs = mesh->getCentroid(rhs);
+                                        return c_lhs[splitAxis] < c_rhs[splitAxis];
+                                    });
 
                     // recursively call on left and right groups
-                    Node left, right;
-                    left.initInterior(triRange[0], triRange[0] + median);
-                    right.initInterior(triRange[0] + median, triRange[1]);
-                    left.computeBoundingBox(triangleIndices, mesh);
-                    right.computeBoundingBox(triangleIndices, mesh);
+                    children[0] = new Node(triRange[0], median);
+                    children[1] = new Node(median, triRange[1]);
+                    children[0]->computeBoundingBox(triangleIndices, mesh);
+                    children[1]->computeBoundingBox(triangleIndices, mesh);
 
-                    children[0] = &left;
-                    children[1] = &right;
+                    children[0]->build(triangleIndices, mesh);                    
+                    children[1]->build(triangleIndices, mesh);
+                }
+            }
 
-                    left.build(triangleIndices, mesh, bboxes);                    
-                    right.build(triangleIndices, mesh, bboxes);
+            // for traversing the bvh recursively
+            int rayIntersect(const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray, Intersection &its, bool shadowRay) const {  // TODO: shadow ray?
+                // check if ray hits the bounding box first
+                if (!bbox.rayIntersect(ray) && !bbox.contains(ray.o)) {
+                    return -1;
+                }
+
+                // if node is interior
+                if (isInterior) {
+                    // check if ray hits the children bounding boxes
+                    float nearT[2], farT[2];
+                    bool boxHit[2];
+                    int triInd[2];
+                    boxHit[0] = children[0]->bbox.rayIntersect(ray, nearT[0], farT[0]) || children[0]->bbox.contains(ray.o);
+                    boxHit[1] = children[1]->bbox.rayIntersect(ray, nearT[1], farT[1]) || children[1]->bbox.contains(ray.o);
+                    triInd[0] = -1;  // -1: no hit
+                    triInd[1] = -1;  // -1: no hit
+
+                    // recurse into children nodes, open the closer one first
+                    int i = (nearT[0] < nearT[1]) ? 0 : 1;
+                    // if (boxHit[i]) {  // TODO: revert this
+                        triInd[i] = children[i]->rayIntersect(triangleIndices, mesh, ray, its, shadowRay);
+                    // }
+                    // recalculate the box hit for the second child
+                    // in case the ray has been shortened by intersections in the first child
+                    boxHit[1 - i] = children[1 - i]->bbox.rayIntersect(ray) || children[1 - i]->bbox.contains(ray.o);
+                    // if (boxHit[1 - i]) {
+                        triInd[1 - i] = children[1 - i]->rayIntersect(triangleIndices, mesh, ray, its, shadowRay);
+                    // }
+                    return (triInd[1 - i] == -1) ? triInd[i] : triInd[1 - i];
+                }
+                else {  // node is a leaf
+                    // loop over all triangles in this leaf
+                    int triInd = -1;  // assume no hit
+                    for (int i = triRange[0]; i < triRange[1]; i++) {
+                        // test for intersection
+                        if (Accel::testTriangle(mesh, triangleIndices[i], ray, shadowRay, its)) {
+                            triInd = triangleIndices[i];
+                            // shorten the ray to this intersection
+                            ray.maxt = its.t;
+                        }
+                    }
+                    return triInd;
                 }
             }
 
@@ -160,36 +196,25 @@ private:
         };
 
         void build() {
-            std::vector<BoundingBox3f> bboxes;
             // init root
-            root.triRange[0] = 0;
-            root.triRange[1] = triangleIndices.size();
-            root.bbox = mesh->getBoundingBox();
-
-            // root.computeBoundingBox(triangleIndices, mesh);
+            root = new Node(0, triangleIndices.size());
+            root->bbox = mesh->getBoundingBox();
 
             // start building the tree recursively
-            root.build(triangleIndices, mesh, bboxes);
+            root->build(triangleIndices, mesh);
 
-            // print the whole triangleIndices vector, todo: why is not almost sorted, but not fully?
-            // for (int i = 0; i < triangleIndices.size() && i < 200; i++) {
-            //     auto t = triangleIndices[i];
-            //     cout << mesh->getCentroid(t)[0] << endl;
-            // }
-
-            // bounding box computing sanity check:
-            // cout << "Mesh BBOX: " << mesh->getBoundingBox().toString() << endl;
-            // root.computeBoundingBox(triangleIndices, mesh);
-            // cout << "Acc. BBOX: " << root.bbox.toString() << endl;
-
-            // write to .obj file
-            std::string filename = "./bboxes.obj";
+            // // write to .obj file
+            // std::string filename = "./bboxes.obj";
            
-            // if (mesh->getVertexCount() == 6 && mesh->getTriangleCount() == 8) {
-                BoundingBox3f::writeOBJ(filename, bboxes);
-            // }
+            // // if (mesh->getVertexCount() == 6 && mesh->getTriangleCount() == 8) {
+            //     BoundingBox3f::writeOBJ(filename, bboxes);
+            // // }
 
             cout << "root build finished." << endl;
+        }
+
+        int rayIntersection(Ray3f &ray, Intersection &its, bool shadowRay) const {
+            return root->rayIntersect(triangleIndices, mesh, ray, its, shadowRay);
         }
 
 		const Mesh* getMesh() const
@@ -199,7 +224,7 @@ private:
 
      private:
 		const Mesh* mesh;
-        Node root;
+        Node* root;
         std::vector<int> triangleIndices;
         // todo: preprocess bounding boxes and cenetroids
 	};
