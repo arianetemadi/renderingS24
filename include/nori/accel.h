@@ -22,6 +22,7 @@
 #include <vector>
 #include <numeric>
 #include <stack>
+#include <utility>
 
 NORI_NAMESPACE_BEGIN
 
@@ -97,6 +98,10 @@ private:
                 int triRange0;
                 int rightChildInd;
             };
+            
+            std::string toString() {
+                return tfm::format("CompactNode: bbox=%s, nLeafTriangles=%d, triRange0/rightChildInd=%d", bbox.toString(), nLeafTriangles, triRange0);
+            }
         };
 
         struct Node {
@@ -107,7 +112,7 @@ private:
             
             void build(std::vector<int>& triangleIndices, const Mesh* mesh,
                 const std::vector<BoundingBox3f>& bboxes, const std::vector<Point3f>& centroids,
-                std::vector<CompactNode> compactBVH) {  // TODO: try array
+                std::vector<CompactNode>& compactBVH) {  // TODO: try array
                 
                 // compactly save this node
                 CompactNode cn;
@@ -246,40 +251,50 @@ private:
         }
 
         // for traversing the BVH iteratively (more efficient)
-        int rayIntersectIterative(Node* start, const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray,
+        int rayIntersectIterative(const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray,
             Intersection &its, bool shadowRay) const {
-            
-            std::stack<Node*> nodes;
-            nodes.push(start);
+            std::stack<std::pair<int, CompactNode>> nodes;
+            // std::stack<int> nodeInds;
+            // std::pair<int, CompactNode> p(x, compactBVH[0]);
+            // auto ttt = std::make_pair(x, compactBVH[0]);
+            // cout << "CBVH size: " << compactBVH.size() << endl;
+            nodes.push(std::pair<int, CompactNode>(0, compactBVH[0]));
+            // nodeInds.push(0);
             int triInd = -1;  // assume no hit
             while (!nodes.empty()) {
                 // remove the first node in the stack
-                Node* node = nodes.top();
+                int nodeInd = nodes.top().first;
+                CompactNode node = nodes.top().second;
                 nodes.pop();
+                // nodeInds.pop();
+                // cout << node.toString() << endl;
 
                 // if ray origin is outside the box and ray does not hit the box
-                if (!node->bbox.contains(ray.o) && !node->bbox.rayIntersect(ray)) {
+                if (!node.bbox.contains(ray.o) && !node.bbox.rayIntersect(ray)) {
                     continue;
                 }
 
                 // if node is interior
-                if (node->isInterior) {
-                    Node *children[2];
-                    children[0] = node->children[0];
-                    children[1] = node->children[1];
+                if (node.nLeafTriangles == 0) {
+                    CompactNode children[2];
+                    int childrenInd[2] = {nodeInd + 1, node.rightChildInd};
+                    children[0] = compactBVH[childrenInd[0]];
+                    children[1] = compactBVH[childrenInd[1]];
                     // check if ray hits the children bounding boxes
                     float nearT[2], farT[2];
-                    children[0]->bbox.rayIntersect(ray, nearT[0], farT[0]) || children[0]->bbox.contains(ray.o);
-                    children[1]->bbox.rayIntersect(ray, nearT[1], farT[1]) || children[1]->bbox.contains(ray.o);
+                    children[0].bbox.rayIntersect(ray, nearT[0], farT[0]) || children[0].bbox.contains(ray.o);
+                    children[1].bbox.rayIntersect(ray, nearT[1], farT[1]) || children[1].bbox.contains(ray.o);
 
                     // recurse into children nodes, open the closer one first
                     int i = (nearT[0] < nearT[1]) ? 0 : 1;
-                    nodes.push(children[1 - i]);
-                    nodes.push(children[i]);
+                    nodes.push(std::pair<int, CompactNode>(childrenInd[1 - i], children[1 - i]));
+                    // nodeInds.push();
+                    nodes.push(std::pair<int, CompactNode>(childrenInd[i], children[i]));
+                    // nodeInds.push();
                 }
                 else {  // node is a leaf
                     // loop over all triangles in this leaf
-                    for (int i = node->triRange[0]; i < node->triRange[1]; i++) {
+                    for (int i = node.triRange0; i < node.triRange0 + node.nLeafTriangles; i++) {
                         // test for intersection
                         if (Accel::testTriangle(mesh, triangleIndices[i], ray, shadowRay, its)) {
                             if (shadowRay) return -2;
@@ -301,7 +316,7 @@ private:
             }
             
             // return root->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
-            return rayIntersectIterative(root, triangleIndices, mesh, ray, its, shadowRay);
+            return rayIntersectIterative(triangleIndices, mesh, ray, its, shadowRay);
         }
 
 		const Mesh* getMesh() const
