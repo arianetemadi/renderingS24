@@ -31,10 +31,19 @@ void Accel::addMesh(Mesh *mesh)
 void Accel::build() 
 {
 	auto before = std::chrono::system_clock::now();
-	for (BVH& bvh : m_bvhs)  // TODO: improve this loop
-	{
-		bvh.build();
-	} 
+
+    // merge all BVHs into one
+    for (int i = 0; i < m_bvhs.size(); i++) {
+        m_bvhs[0].addMesh(m_bvhs[i].getMesh());
+    }
+
+	// for (BVH& bvh : m_bvhs)  // TODO: improve this loop
+	// {
+	// 	bvh.build();
+	// } 
+
+    m_bvhs[0].build();
+
 	auto after = std::chrono::system_clock::now();
 
 	std::cout << "BVH building took " << std::chrono::duration<double>(after - before).count() << " s" << std::endl;
@@ -61,6 +70,7 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
             foundIntersection = true;
             closestIdx = triInd;
         }
+        break;
 
 
 		// for (uint32_t idx = 0; idx < mesh->getTriangleCount(); ++idx)

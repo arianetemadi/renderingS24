@@ -75,14 +75,9 @@ private:
 	*/
 	class BVH {
 	 public:
-		BVH(const Mesh* mesh) : mesh(mesh)
+		BVH(Mesh* mesh) : mesh(mesh)
 		{
             cout << "BVH instantiated!" << endl;
-
-            // initialize the triangle index vector
-            triangleIndices = std::vector<int>(mesh->getTriangleCount());
-            std::iota(std::begin(triangleIndices), std::end(triangleIndices), 0);
-
         }
 
         enum class Type {
@@ -96,7 +91,7 @@ private:
                 triRange[1] = rightRange;
             }
             
-            void build(std::vector<int>& triangleIndices, const Mesh* mesh,
+            void build(std::vector<int>& triangleIndices,
                 const std::vector<BoundingBox3f>& bboxes, const std::vector<Point3f>& centroids) {
                 if (nTriangles() <= 10) {  // leaf node
 
@@ -124,8 +119,8 @@ private:
                     children[0]->computeBoundingBox(triangleIndices, bboxes);
                     children[1]->computeBoundingBox(triangleIndices, bboxes);
 
-                    children[0]->build(triangleIndices, mesh, bboxes, centroids);                    
-                    children[1]->build(triangleIndices, mesh, bboxes, centroids);
+                    children[0]->build(triangleIndices, bboxes, centroids);                    
+                    children[1]->build(triangleIndices, bboxes, centroids);
                 }
             }
 
@@ -197,18 +192,34 @@ private:
         };
 
         void build() {
+            // initialize the mesh index map
+            for (int m = 0; m < meshes.size(); m++) {
+                Mesh* mesh = meshes[m];
+                meshOffset.push_back(meshMap.size());
+                for (int i = 0; i < mesh->getTriangleCount(); i++) {
+                    meshMap.push_back(m);
+                }
+            }
+
+            // initialize the triangle index vector
+            triangleIndices = std::vector<int>(meshMap.size());
+            std::iota(std::begin(triangleIndices), std::end(triangleIndices), 0);
+
             // cache bounding boxes and centroids of all triangles
-            for (int i = 0; i < mesh->getTriangleCount(); i++) {
-                bboxes.push_back(mesh->getBoundingBox(i));
-                centroids.push_back(mesh->getCentroid(i));
+            for (Mesh* mesh : meshes) {
+                for (int i = 0; i < mesh->getTriangleCount(); i++) {
+                    bboxes.push_back(mesh->getBoundingBox(i));
+                    centroids.push_back(mesh->getCentroid(i));
+                }
             }
 
             // init root
             root = new Node(0, triangleIndices.size());
-            root->bbox = mesh->getBoundingBox();
+            // root->bbox = mesh->getBoundingBox();
+            root->computeBoundingBox(triangleIndices, bboxes);
 
             // start building the tree recursively
-            root->build(triangleIndices, mesh, bboxes, centroids);
+            root->build(triangleIndices, bboxes, centroids);
 
             // // write to .obj file
             // std::string filename = "./bboxes.obj";
@@ -221,7 +232,7 @@ private:
         }
 
         // for traversing the BVH iteratively (more efficient)
-        int rayIntersectIterative(Node* start, const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray,
+        int rayIntersectIterative(Node* start, const std::vector<int>& triangleIndices, Ray3f &ray,
             Intersection &its, bool shadowRay) const {
             
             std::stack<Node*> nodes;
@@ -256,9 +267,11 @@ private:
                     // loop over all triangles in this leaf
                     for (int i = node->triRange[0]; i < node->triRange[1]; i++) {
                         // test for intersection
-                        if (Accel::testTriangle(mesh, triangleIndices[i], ray, shadowRay, its)) {
+                        Mesh* mesh = meshes[meshMap[triangleIndices[i]]];
+                        int trueTriangleInd = triangleIndices[i] - meshOffset[meshMap[triangleIndices[i]]];
+                        if (Accel::testTriangle(mesh, trueTriangleInd, ray, shadowRay, its)) {
                             if (shadowRay) return -2;
-                            triInd = triangleIndices[i];
+                            triInd = trueTriangleInd;
                             // shorten the ray to this intersection
                             ray.maxt = its.t;
                         }
@@ -276,18 +289,25 @@ private:
             }
 
             // return root->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
-            return rayIntersectIterative(root, triangleIndices, mesh, ray, its, shadowRay);
+            return rayIntersectIterative(root, triangleIndices, ray, its, shadowRay);
         }
 
-		const Mesh* getMesh() const
+		Mesh* getMesh() const
 		{
 			return mesh;
 		}
 
+        void addMesh(Mesh* mesh) {
+            meshes.push_back(mesh);
+        }
+        
      private:
-		const Mesh* mesh;
+        Mesh* mesh;
+		std::vector<Mesh*> meshes;
+        std::vector<int> meshOffset;
         Node* root;
         std::vector<int> triangleIndices;
+        std::vector<int> meshMap;
 
         // cached bounding boxes of triangles
         std::vector<BoundingBox3f> bboxes;
