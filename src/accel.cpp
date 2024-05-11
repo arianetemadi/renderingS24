@@ -48,7 +48,7 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
 
 	for (const BVH& bvh : m_bvhs)  // TODO: improve this loop
 	{
-		const Mesh* mesh = bvh.getMesh();
+		// const Mesh* mesh = bvh.getMesh();
 		
 		/* 
 		   Assignment 2

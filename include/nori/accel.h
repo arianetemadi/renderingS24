@@ -85,11 +85,10 @@ private:
 
         }
 
-        // enum class Type {
-        //     Middle,
-        //     Median,
-        //     SAH,
-        // };
+        enum class Type {
+            Median,
+            SAH,
+        };
 
         struct Node {
             Node (int leftRange, int rightRange) {
@@ -99,7 +98,7 @@ private:
             
             void build(std::vector<int>& triangleIndices, const Mesh* mesh,
                 const std::vector<BoundingBox3f>& bboxes, const std::vector<Point3f>& centroids) {
-                if (nTriangles() <= 20) {  // leaf node
+                if (nTriangles() <= 10) {  // leaf node
 
                 }
                 else {  // interior node
@@ -122,8 +121,8 @@ private:
                     // recursively call on left and right groups
                     children[0] = new Node(triRange[0], median);
                     children[1] = new Node(median, triRange[1]);
-                    children[0]->computeBoundingBox(triangleIndices, mesh, bboxes);
-                    children[1]->computeBoundingBox(triangleIndices, mesh, bboxes);
+                    children[0]->computeBoundingBox(triangleIndices, bboxes);
+                    children[1]->computeBoundingBox(triangleIndices, bboxes);
 
                     children[0]->build(triangleIndices, mesh, bboxes, centroids);                    
                     children[1]->build(triangleIndices, mesh, bboxes, centroids);
@@ -175,7 +174,7 @@ private:
                 }
             }
 
-            void computeBoundingBox(std::vector<int>& triangleIndices, const Mesh* mesh,
+            void computeBoundingBox(std::vector<int>& triangleIndices,
                 const std::vector<BoundingBox3f>& bboxes) {
                 // start with the bounding box of the first triangle
                 bbox = bboxes[triangleIndices[triRange[0]]];
@@ -245,8 +244,8 @@ private:
                     children[1] = node->children[1];
                     // check if ray hits the children bounding boxes
                     float nearT[2], farT[2];
-                    children[0]->bbox.rayIntersect(ray, nearT[0], farT[0]) || children[0]->bbox.contains(ray.o);
-                    children[1]->bbox.rayIntersect(ray, nearT[1], farT[1]) || children[1]->bbox.contains(ray.o);
+                    children[0]->bbox.rayIntersect(ray, nearT[0], farT[0]);
+                    children[1]->bbox.rayIntersect(ray, nearT[1], farT[1]);
 
                     // recurse into children nodes, open the closer one first
                     int i = (nearT[0] < nearT[1]) ? 0 : 1;
@@ -272,10 +271,10 @@ private:
 
         int rayIntersection(Ray3f &ray, Intersection &its, bool shadowRay) const {
             // check if ray hits the root bounding box first
-            if (!root->bbox.rayIntersect(ray) && !root->bbox.contains(ray.o)) {
+            if (!root->bbox.contains(ray.o) && !root->bbox.rayIntersect(ray)) {
                 return -1;
             }
-            
+
             // return root->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
             return rayIntersectIterative(root, triangleIndices, mesh, ray, its, shadowRay);
         }
