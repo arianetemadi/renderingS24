@@ -99,18 +99,59 @@ private:
             void build(std::vector<int>& triangleIndices,
                 const std::vector<BoundingBox3f>& bboxes, const std::vector<Point3f>& centroids) {
                 if (nTriangles() <= 10) {  // leaf node
-
+                    return;
                 }
-                else {  // interior node
-                    isInterior = true;
-                    
-                    // choose the largest axis for splitting
-                    splitAxis = bbox.getLargestAxis();
+                // interior node
+                isInterior = true;
 
-                    // sort your range of triangles into two groups, with nelements function
-                    int median = triRange[0] + nTriangles() / 2;
-                    std::nth_element(triangleIndices.begin() + triRange[0],
-                                    triangleIndices.begin() + median, triangleIndices.begin() + triRange[1], 
+                int splitInd;
+                int splitAxis;  // 0, 1, 2 for x, y, z
+
+                if (false) {  // Median    
+                    // choose the largest axis for splitting
+                    splitAxis = bbox.getLargestAxis();  // TODO: make local variable, not member
+
+                    // choose the median of the range for splitting
+                    splitInd = nTriangles() / 2;
+                }
+
+                else {  // Surface Area Heuristic (SAH)
+                    float leastCost = std::numeric_limits<float>::infinity();
+                    for (int sa = 0; sa < 3; sa++) {
+                        std::sort(triangleIndices.begin() + triRange[0],
+                                    triangleIndices.begin() + triRange[1],
+                                    [&](const int& lhs, const int& rhs)
+                                    {
+                                        Point3f c_lhs = centroids[lhs];
+                                        Point3f c_rhs = centroids[rhs];
+                                        return c_lhs[sa] < c_rhs[sa];
+                                    });
+                        
+                        std::vector<BoundingBox3f> BBL(nTriangles() - 1);
+                        std::vector<BoundingBox3f> BBR(nTriangles() - 1);
+                        BBL[0] = bboxes[triangleIndices[triRange[0]]];
+                        BBR[0] = bboxes[triangleIndices[triRange[1] - 1]];
+                        for (int i = 1; i < nTriangles() - 1; i++) {
+                            BBL[i] = BoundingBox3f::merge(BBL[i - 1], bboxes[triangleIndices[triRange[0] + i]]);
+                            BBR[i] = BoundingBox3f::merge(BBR[i - 1], bboxes[triangleIndices[triRange[1] - 1 - i]]);
+                        }
+                        // find the split with the minimum expected cost
+                        for (int i = 0; i < nTriangles() - 1; i++) {
+                            float cost = BBL[i].getSurfaceArea() * (i + 1)
+                                               + BBR[nTriangles() - 2 - i].getSurfaceArea() * (nTriangles() - 1 - i);
+                            if (cost < leastCost) {
+                                leastCost = cost;
+                                splitAxis = sa;
+                                splitInd = i + 1;  // TODO: +1?
+                            }
+                        }
+                    }
+                }
+
+                // sort your range of triangles into two groups, with nelements function
+                std::nth_element(triangleIndices.begin() + triRange[0],
+                                    triangleIndices.begin() + triRange[0] + splitInd,
+                                    triangleIndices.begin() + triRange[1], 
                                     [&](const int& lhs, const int& rhs)
                                     {
                                         Point3f c_lhs = centroids[lhs];
@@ -118,15 +159,14 @@ private:
                                         return c_lhs[splitAxis] < c_rhs[splitAxis];
                                     });
 
-                    // recursively call on left and right groups
-                    children[0] = new Node(triRange[0], median);
-                    children[1] = new Node(median, triRange[1]);
-                    children[0]->computeBoundingBox(triangleIndices, bboxes);
-                    children[1]->computeBoundingBox(triangleIndices, bboxes);
+                // recursively call on left and right groups
+                children[0] = new Node(triRange[0], triRange[0] + splitInd);
+                children[1] = new Node(triRange[0] + splitInd, triRange[1]);
+                children[0]->computeBoundingBox(triangleIndices, bboxes);
+                children[1]->computeBoundingBox(triangleIndices, bboxes);
 
-                    children[0]->build(triangleIndices, bboxes, centroids);                    
-                    children[1]->build(triangleIndices, bboxes, centroids);
-                }
+                children[0]->build(triangleIndices, bboxes, centroids);                    
+                children[1]->build(triangleIndices, bboxes, centroids);
             }
 
             // for traversing the BVH recursively
@@ -191,7 +231,6 @@ private:
 
             BoundingBox3f bbox;
             Node *children[2];
-            int splitAxis;  // 0, 1, 2 for x, y, z
             int triRange[2];  // [inclusive, exclusive), continuous range of triangles in the triangleIndices vector
             bool isInterior = false;
         };
