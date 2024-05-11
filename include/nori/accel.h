@@ -96,7 +96,7 @@ private:
                 triRange[1] = rightRange;
             }
             
-            void build(std::vector<int>& triangleIndices, const Mesh* mesh,
+            void build(std::vector<int>& triangleIndices,
                 const std::vector<BoundingBox3f>& bboxes, const std::vector<Point3f>& centroids) {
                 if (nTriangles() <= 10) {  // leaf node
 
@@ -124,8 +124,8 @@ private:
                     children[0]->computeBoundingBox(triangleIndices, bboxes);
                     children[1]->computeBoundingBox(triangleIndices, bboxes);
 
-                    children[0]->build(triangleIndices, mesh, bboxes, centroids);                    
-                    children[1]->build(triangleIndices, mesh, bboxes, centroids);
+                    children[0]->build(triangleIndices, bboxes, centroids);                    
+                    children[1]->build(triangleIndices, bboxes, centroids);
                 }
             }
 
@@ -151,7 +151,7 @@ private:
                     }
                     // recalculate the box hit for the second child
                     // in case the ray has been shortened by intersections in the first child
-                    boxHit[1 - i] = children[1 - i]->bbox.rayIntersect(ray) || children[1 - i]->bbox.contains(ray.o);
+                    boxHit[1 - i] = children[1 - i]->bbox.contains(ray.o) || children[1 - i]->bbox.rayIntersect(ray);
                     if (boxHit[1 - i]) {
                         triInd[1 - i] = children[1 - i]->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
                         if (triInd[1 - i] == -2) return -2;  // shadow ray
@@ -208,7 +208,7 @@ private:
             root->bbox = mesh->getBoundingBox();
 
             // start building the tree recursively
-            root->build(triangleIndices, mesh, bboxes, centroids);
+            root->build(triangleIndices, bboxes, centroids);
 
             // // write to .obj file
             // std::string filename = "./bboxes.obj";
@@ -221,8 +221,8 @@ private:
         }
 
         // for traversing the BVH iteratively (more efficient)
-        int rayIntersectIterative(Node* start, const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray,
-            Intersection &its, bool shadowRay) const {
+        int rayIntersectIterative(Node* start, Ray3f &ray, Intersection &its,
+            bool shadowRay) const {
             
             std::stack<Node*> nodes;
             nodes.push(start);
@@ -275,8 +275,8 @@ private:
                 return -1;
             }
 
-            // return root->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
-            return rayIntersectIterative(root, triangleIndices, mesh, ray, its, shadowRay);
+            return root->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
+            // return rayIntersectIterative(root, ray, its, shadowRay);
         }
 
 		const Mesh* getMesh() const
