@@ -32,15 +32,22 @@ void Accel::build()
 {
 	auto before = std::chrono::system_clock::now();
 
-	// for (BVH& bvh : m_bvhs)
-	// {
-	// 	bvh.build();
-	// } 
-
-    for (BVH& bvh : m_bvhs) {
-        m_bvhs[0].addMesh(bvh.getMesh());
+    // if there are only a few meshes in the scene,
+    // create individual BVHs
+    if (m_bvhs.size() < mergeThreshold) {
+        for (BVH& bvh : m_bvhs) {
+            bvh.build();
+        } 
     }
-    m_bvhs[0].build();
+    // if there are many meshes in the scene,
+    // make one BVH for the whole scene with all meshes merged
+    else {
+        for (int i = 1; i < m_bvhs.size(); i++) {
+            m_bvhs[0].addMesh(m_bvhs[i].getMesh());
+        }
+        
+        m_bvhs[0].build();  // m_bvhs[0] contains all meshes
+    }
 
 	auto after = std::chrono::system_clock::now();
 
@@ -61,7 +68,12 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
             foundIntersection = true;
             closestIdx = triInd;
         }
-        break;
+
+        if (m_bvhs.size() >= mergeThreshold) {
+            // if there are many meshes, we only have one merged BVH: the first one.
+            // so break after the first one
+            break;
+        }
 	}
 
     if (foundIntersection) {
@@ -158,7 +170,8 @@ void Accel::BVH::Node::build(std::vector<int>& triangleIndices, BVH::Type type,
 }
 
 int Accel::BVH::Node::rayIntersectRecursive(const std::vector<int>& triangleIndices,
-            const Mesh* mesh, Ray3f &ray, Intersection &its, bool shadowRay) const {
+            const std::vector<Mesh*>& meshes, const std::vector<int>& meshOffset, const std::vector<int>& meshMap,
+            Ray3f &ray, Intersection &its, bool shadowRay) const {
     // if node is interior
     if (isInterior) {
         // check if ray hits the children bounding boxes
@@ -173,14 +186,14 @@ int Accel::BVH::Node::rayIntersectRecursive(const std::vector<int>& triangleIndi
         // recurse into children nodes, open the closer one first
         int i = (nearT[0] < nearT[1]) ? 0 : 1;
         if (boxHit[i]) {
-            triInd[i] = children[i]->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
+            triInd[i] = children[i]->rayIntersectRecursive(triangleIndices, meshes, meshOffset, meshMap, ray, its, shadowRay);
             if (triInd[i] == -2) return -2;  // shadow ray
         }
         // recalculate the box hit for the second child
         // in case the ray has been shortened by intersections in the first child
         boxHit[1 - i] = children[1 - i]->bbox.contains(ray.o) || children[1 - i]->bbox.rayIntersect(ray);
         if (boxHit[1 - i]) {
-            triInd[1 - i] = children[1 - i]->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
+            triInd[1 - i] = children[1 - i]->rayIntersectRecursive(triangleIndices, meshes, meshOffset, meshMap, ray, its, shadowRay);
             if (triInd[1 - i] == -2) return -2;  // shadow ray
         }
         return (triInd[1 - i] == -1) ? triInd[i] : triInd[1 - i];
@@ -190,9 +203,11 @@ int Accel::BVH::Node::rayIntersectRecursive(const std::vector<int>& triangleIndi
         int triInd = -1;  // assume no hit
         for (int i = triRange[0]; i < triRange[1]; i++) {
             // test for intersection
-            if (Accel::testTriangle(mesh, triangleIndices[i], ray, shadowRay, its)) {
+            Mesh* mesh = meshes[meshMap[triangleIndices[i]]];
+            int trueTriangleInd = triangleIndices[i] - meshOffset[meshMap[triangleIndices[i]]];
+            if (Accel::testTriangle(mesh, trueTriangleInd, ray, shadowRay, its)) {
                 if (shadowRay) return -2;
-                triInd = triangleIndices[i];
+                triInd = trueTriangleInd;
                 // shorten the ray to this intersection
                 ray.maxt = its.t;
             }

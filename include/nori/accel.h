@@ -71,7 +71,7 @@ public:
 private:
 	class BVH {
 	 public:
-		BVH(Mesh* mesh) : mesh(mesh) {}
+		BVH(Mesh* mesh) { meshes.push_back(mesh); }
 
         // BVH type
         enum class Type {
@@ -91,8 +91,9 @@ private:
                 const std::vector<BoundingBox3f>& bboxes, const std::vector<Point3f>& centroids);
 
             // for traversing the BVH recursively
-            int rayIntersectRecursive(const std::vector<int>& triangleIndices, const Mesh* mesh, Ray3f &ray,
-                Intersection &its, bool shadowRay) const;
+            int rayIntersectRecursive(const std::vector<int>& triangleIndices,
+                const std::vector<Mesh*>& meshes, const std::vector<int>& meshOffset, const std::vector<int>& meshMap,
+                Ray3f &ray, Intersection &its, bool shadowRay) const;
 
             void computeBoundingBox(std::vector<int>& triangleIndices,
                 const std::vector<BoundingBox3f>& bboxes);
@@ -120,29 +121,30 @@ private:
 
             // I implemented two versions: recursive and iterative
             // surprisingly, the recursive version is slightly faster
-            // return root->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
-            return rayIntersectIterative(root, ray, its, shadowRay);
+            return root->rayIntersectRecursive(triangleIndices, meshes, meshOffset, meshMap, ray, its, shadowRay);
+            // return rayIntersectIterative(root, ray, its, shadowRay);
         }
 
-		Mesh* getMesh() { return mesh; }
+		Mesh* getMesh() { return meshes[0]; }
 
         void addMesh(Mesh* mesh) { meshes.push_back(mesh); }
 
      private:
-		Mesh* mesh;
+        std::vector<Mesh*> meshes;  // has only one mesh in case there are less than 'mergeThreshold' meshes in the scene
+        std::vector<int> meshOffset;
+        std::vector<int> meshMap;
         BVH::Type type = Type::SAH;  // Surface Area Heuristic by default
         Node* root;  // root of the BVH hierarchy
         std::vector<int> triangleIndices;  // each BVH *leaf* node points to a range of this list
         std::vector<BoundingBox3f> bboxes;  // cached bounding boxes of triangles
         std::vector<Point3f> centroids;  // cached centroids of triangles
-        std::vector<Mesh*> meshes;
-        std::vector<int> meshOffset;
-        std::vector<int> meshMap;
 	};
 
 	std::vector<BVH> m_bvhs;
 
     BoundingBox3f m_bbox;           ///< Bounding box of the entire scene
+
+    int mergeThreshold = 20;
 
 private:
     // Test ray for an intersection with a triangle in a mesh
