@@ -71,7 +71,7 @@ public:
 private:
 	class BVH {
 	 public:
-		BVH(const Mesh* mesh) : mesh(mesh) {}
+		BVH(Mesh* mesh) : mesh(mesh) {}
 
         // BVH type
         enum class Type {
@@ -120,19 +120,24 @@ private:
 
             // I implemented two versions: recursive and iterative
             // surprisingly, the recursive version is slightly faster
-            return root->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
-            // return rayIntersectIterative(root, ray, its, shadowRay);
+            // return root->rayIntersectRecursive(triangleIndices, mesh, ray, its, shadowRay);
+            return rayIntersectIterative(root, ray, its, shadowRay);
         }
 
-		const Mesh* getMesh() const { return mesh; }
+		Mesh* getMesh() { return mesh; }
+
+        void addMesh(Mesh* mesh) { meshes.push_back(mesh); }
 
      private:
-		const Mesh* mesh;
+		Mesh* mesh;
         BVH::Type type = Type::SAH;  // Surface Area Heuristic by default
         Node* root;  // root of the BVH hierarchy
         std::vector<int> triangleIndices;  // each BVH *leaf* node points to a range of this list
         std::vector<BoundingBox3f> bboxes;  // cached bounding boxes of triangles
         std::vector<Point3f> centroids;  // cached centroids of triangles
+        std::vector<Mesh*> meshes;
+        std::vector<int> meshOffset;
+        std::vector<int> meshMap;
 	};
 
 	std::vector<BVH> m_bvhs;

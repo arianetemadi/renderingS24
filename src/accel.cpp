@@ -31,10 +31,17 @@ void Accel::addMesh(Mesh *mesh)
 void Accel::build() 
 {
 	auto before = std::chrono::system_clock::now();
-	for (BVH& bvh : m_bvhs)
-	{
-		bvh.build();
-	} 
+
+	// for (BVH& bvh : m_bvhs)
+	// {
+	// 	bvh.build();
+	// } 
+
+    for (BVH& bvh : m_bvhs) {
+        m_bvhs[0].addMesh(bvh.getMesh());
+    }
+    m_bvhs[0].build();
+
 	auto after = std::chrono::system_clock::now();
 
 	std::cout << "BVH building took " << std::chrono::duration<double>(after - before).count() << " s" << std::endl;
@@ -54,6 +61,7 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
             foundIntersection = true;
             closestIdx = triInd;
         }
+        break;
 	}
 
     if (foundIntersection) {
@@ -205,21 +213,33 @@ void Accel::BVH::Node::computeBoundingBox(std::vector<int>& triangleIndices,
 }
 
 void Accel::BVH::build() {
+    // initialize the mesh index map
+    for (int m = 0; m < meshes.size(); m++) {
+        Mesh* mesh = meshes[m];
+        meshOffset.push_back(meshMap.size());
+        for (int i = 0; i < mesh->getTriangleCount(); i++) {
+            meshMap.push_back(m);
+        }
+    }
+
     // initialize the triangle index vector
-    triangleIndices = std::vector<int>(mesh->getTriangleCount());
+    triangleIndices = std::vector<int>(meshMap.size());
     std::iota(std::begin(triangleIndices), std::end(triangleIndices), 0);
 
     // cache bounding boxes and centroids of all triangles
-    bboxes.reserve(mesh->getTriangleCount());
-    centroids.reserve(mesh->getTriangleCount());
-    for (uint32_t i = 0; i < mesh->getTriangleCount(); i++) {
-        bboxes.push_back(mesh->getBoundingBox(i));
-        centroids.push_back(mesh->getCentroid(i));
+    bboxes.reserve(meshMap.size());
+    centroids.reserve(meshMap.size());
+    for (Mesh* mesh : meshes) {
+        for (uint32_t i = 0; i < mesh->getTriangleCount(); i++) {
+            bboxes.push_back(mesh->getBoundingBox(i));
+            centroids.push_back(mesh->getCentroid(i));
+        }
     }
 
     // init root
     root = new Node(0, triangleIndices.size());
-    root->bbox = mesh->getBoundingBox();
+    // root->bbox = mesh->getBoundingBox();
+    root->computeBoundingBox(triangleIndices, bboxes);
 
     // start building the tree recursively
     root->build(triangleIndices, type, bboxes, centroids);
@@ -259,9 +279,11 @@ int Accel::BVH::rayIntersectIterative(Node* start, Ray3f &ray, Intersection &its
             // loop over all triangles in this leaf
             for (int i = node->triRange[0]; i < node->triRange[1]; i++) {
                 // test for intersection
-                if (Accel::testTriangle(mesh, triangleIndices[i], ray, shadowRay, its)) {
+                Mesh* mesh = meshes[meshMap[triangleIndices[i]]];
+                int trueTriangleInd = triangleIndices[i] - meshOffset[meshMap[triangleIndices[i]]];
+                if (Accel::testTriangle(mesh, trueTriangleInd, ray, shadowRay, its)) {
                     if (shadowRay) return -2;
-                    triInd = triangleIndices[i];
+                    triInd = trueTriangleInd;
                     // shorten the ray to this intersection
                     ray.maxt = its.t;
                 }
