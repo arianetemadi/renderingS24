@@ -24,7 +24,8 @@ NORI_NAMESPACE_BEGIN
 
 void Accel::addMesh(Mesh *mesh) 
 {
-	m_bvhs.emplace_back(mesh);
+	// m_bvhs.emplace_back(mesh);
+    m_kdtrees.emplace_back(mesh);
     m_bbox.expandBy(mesh->getBoundingBox());
 }
 
@@ -32,21 +33,25 @@ void Accel::build()
 {
 	auto before = std::chrono::system_clock::now();
 
-    // if there are only a few meshes in the scene,
-    // create individual BVHs
-    if (m_bvhs.size() < mergeThreshold) {
-        for (BVH& bvh : m_bvhs) {
-            bvh.build();
-        } 
-    }
-    // if there are many meshes in the scene,
-    // make one BVH for the whole scene with all meshes merged
-    else {
-        for (int i = 1; i < m_bvhs.size(); i++) {
-            m_bvhs[0].addMesh(m_bvhs[i].getMesh());
-        }
+    // // if there are only a few meshes in the scene,
+    // // create individual BVHs
+    // if (m_bvhs.size() < mergeThreshold) {
+    //     for (BVH& bvh : m_bvhs) {
+    //         bvh.build();
+    //     } 
+    // }
+    // // if there are many meshes in the scene,
+    // // make one BVH for the whole scene with all meshes merged
+    // else {
+    //     for (int i = 1; i < m_bvhs.size(); i++) {
+    //         m_bvhs[0].addMesh(m_bvhs[i].getMesh());
+    //     }
         
-        m_bvhs[0].build();  // m_bvhs[0] contains all meshes
+    //     m_bvhs[0].build();  // m_bvhs[0] contains all meshes
+    // }
+
+    for (KDTree& kdtree : m_kdtrees) {
+        kdtree.build();
     }
 
 	auto after = std::chrono::system_clock::now();
@@ -149,14 +154,14 @@ void Accel::BVH::Node::build(std::vector<int>& triangleIndices, BVH::Type type,
     // sort this node's triangle indices into two groups for the children
     // via 'nth_element', since 'sort' is unnecessary here
     std::nth_element(triangleIndices.begin() + triRange[0],
-                        triangleIndices.begin() + triRange[0] + splitInd,
-                        triangleIndices.begin() + triRange[1], 
-                        [&](const int& lhs, const int& rhs)
-                        {
-                            Point3f c_lhs = centroids[lhs];
-                            Point3f c_rhs = centroids[rhs];
-                            return c_lhs[splitAxis] < c_rhs[splitAxis];
-                        });
+                    triangleIndices.begin() + triRange[0] + splitInd,
+                    triangleIndices.begin() + triRange[1], 
+                    [&](const int& lhs, const int& rhs)
+                    {
+                        Point3f c_lhs = centroids[lhs];
+                        Point3f c_rhs = centroids[rhs];
+                        return c_lhs[splitAxis] < c_rhs[splitAxis];
+                    });
 
     // create children nodes
     children[0] = new Node(triRange[0], triRange[0] + splitInd);
@@ -253,7 +258,7 @@ void Accel::BVH::build() {
 
     // init root
     root = new Node(0, triangleIndices.size());
-    // root->bbox = mesh->getBoundingBox();
+    // root->bbox = mesh->getBoundingBox();  // TODO: revert this?
     root->computeBoundingBox(triangleIndices, bboxes);
 
     // start building the tree recursively

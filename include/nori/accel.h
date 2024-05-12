@@ -140,7 +140,127 @@ private:
         std::vector<Point3f> centroids;  // cached centroids of triangles
 	};
 
-	std::vector<BVH> m_bvhs;
+    class KDTree {
+     public:
+        KDTree(Mesh* mesh) : mesh(mesh) {}
+
+        struct Node {
+            Node(std::vector<int>& triIndices) : triIndices(triIndices) {
+
+            }
+
+            void build(Mesh* mesh, std::vector<BoundingBox3f>& bboxes) {
+                bboxes.push_back(bbox);
+                if (triIndices.size() <= 20) {  // leaf node
+                    return;
+                }
+
+                isInterior = true;
+
+                // choose the axis for splitting
+                splitAxis = bbox.getLargestAxis();
+
+                // sort this node's triangle indices into two groups for the children
+                // via 'nth_element', since 'sort' is unnecessary here
+                std::nth_element(triIndices.begin(),
+                                triIndices.begin() + triIndices.size() / 2,
+                                triIndices.end(),
+                                [&](const int& lhs, const int& rhs)
+                                {
+                                    Point3f c_lhs = mesh->getCentroid(lhs);
+                                    Point3f c_rhs = mesh->getCentroid(rhs);
+                                    return c_lhs[splitAxis] < c_rhs[splitAxis];
+                                });
+                splitDistance = mesh->getCentroid(triIndices[triIndices.size() / 2])[splitAxis];
+                // TODO: what if this is not inside the box?
+
+                // group the triangles for each child
+                std::vector<int> triIndices0;
+                std::vector<int> triIndices1;
+                for (int i = 0; i < triIndices.size(); i++) {
+                    int g = groupTri(mesh->getBoundingBox(triIndices[i]));
+                    if (g == -1 || g == 0) {
+                        triIndices0.push_back(triIndices[i]);
+                    }
+                    if (g == 1 || g == 0) {
+                        triIndices1.push_back(triIndices[i]);
+                    }
+                }
+
+                // if either of the two children contain all the triangles,
+                // make this node a leaf node and create no children
+                if (triIndices0.size() == triIndices.size()
+                        || triIndices1.size() == triIndices.size()) {
+                    isInterior = false;
+                    return;
+                }
+
+                // create children nodes
+                children[0] = new Node(triIndices0);
+                children[1] = new Node(triIndices1);
+                BoundingBox3f bbox0 = bbox, bbox1 = bbox;
+                bbox0.max[splitAxis] = splitDistance;
+                bbox1.min[splitAxis] = splitDistance;
+                children[0]->bbox = bbox0;
+                children[1]->bbox = bbox1;
+
+                // recursively call on left and right children
+                children[0]->build(mesh, bboxes);
+                children[1]->build(mesh, bboxes);
+            }
+
+            int rayIntersect() {
+
+            }
+
+            int groupTri(BoundingBox3f triBBox) {
+                if (triBBox.min[splitAxis] < splitDistance
+                    && triBBox.max[splitAxis] < splitDistance) {
+                    return -1;
+                }
+                if (triBBox.min[splitAxis] > splitDistance
+                    && triBBox.max[splitAxis] > splitDistance) {
+                    return 1;
+                }
+                return 0;
+            }
+
+            std::vector<int> triIndices;
+            BoundingBox3f bbox;
+            bool isInterior = false;
+            int splitAxis;
+            float splitDistance;
+            Node *children[2];
+        };
+
+        void build() {
+            cout << "root build begins..." << endl;
+            // create the root node
+            std::vector<int> triangleIndices(mesh->getTriangleCount());
+            std::iota(std::begin(triangleIndices), std::end(triangleIndices), 0);
+            root = new Node(triangleIndices);
+            root->bbox = mesh->getBoundingBox();
+
+            // build the tree recursively, starting from the root
+            root->build(mesh, bboxes);
+
+            std::string filename = "./bboxes1.obj";
+            if (mesh->getTriangleCount() == 2000)
+                BoundingBox3f::writeOBJ(filename, bboxes);
+        }
+
+        void rayIntersect() {
+
+        }
+
+     private:
+        Mesh* mesh;
+        Node* root;
+        std::vector<BoundingBox3f> bboxes;
+    };
+
+    std::vector<BVH> m_bvhs;
+    std::vector<KDTree> m_kdtrees;
 
     BoundingBox3f m_bbox;           ///< Bounding box of the entire scene
 
