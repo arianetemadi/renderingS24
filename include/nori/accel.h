@@ -113,7 +113,7 @@ private:
         int rayIntersectIterative(Node* start, Ray3f &ray, Intersection &its,
             bool shadowRay) const;
 
-        int rayIntersection(Ray3f &ray, Intersection &its, bool shadowRay) const {
+        int rayIntersect(Ray3f &ray, Intersection &its, bool shadowRay) const {
             // check if ray hits the root bounding box first
             if (!root->bbox.contains(ray.o) && !root->bbox.rayIntersect(ray)) {
                 return -1;
@@ -145,9 +145,7 @@ private:
         KDTree(Mesh* mesh) : mesh(mesh) {}
 
         struct Node {
-            Node(std::vector<int>& triIndices) : triIndices(triIndices) {
-
-            }
+            Node(std::vector<int>& triIndices) : triIndices(triIndices) {}
 
             void build(Mesh* mesh, std::vector<BoundingBox3f>& bboxes) {
                 bboxes.push_back(bbox);
@@ -209,10 +207,6 @@ private:
                 children[1]->build(mesh, bboxes);
             }
 
-            int rayIntersect() {
-
-            }
-
             int groupTri(BoundingBox3f triBBox) {
                 if (triBBox.min[splitAxis] < splitDistance
                     && triBBox.max[splitAxis] < splitDistance) {
@@ -223,6 +217,67 @@ private:
                     return 1;
                 }
                 return 0;
+            }
+
+            int rayIntersectRecursive(Ray3f &ray, Intersection &its, bool shadowRay, Mesh *mesh) const {
+                // if node is interior
+                if (isInterior) {
+                    cout << "111" << endl;
+                    // check if ray hits the children bounding boxes
+                    float nearT[2], farT[2];
+                    bool boxHit[2];
+                    int triInd[2];
+                    boxHit[0] = children[0]->bbox.rayIntersect(ray, nearT[0], farT[0]) || children[0]->bbox.contains(ray.o);
+                    boxHit[1] = children[1]->bbox.rayIntersect(ray, nearT[1], farT[1]) || children[1]->bbox.contains(ray.o);
+                    triInd[0] = -1;  // -1: no hit
+                    triInd[1] = -1;  // -1: no hit
+
+                    cout << "444" << endl;
+                    // recurse into children nodes, open the closer one first
+                    int i = (nearT[0] < nearT[1]) ? 0 : 1;
+                    if (boxHit[i]) {
+                        triInd[i] = children[i]->rayIntersectRecursive(ray, its, shadowRay, mesh);
+                        if (triInd[i] == -2) return -2;  // shadow ray
+                        if (triInd[i] >= 0) return triInd[i];
+                    }
+                    cout << "555" << endl;
+                    // recalculate the box hit for the second child
+                    // in case the ray has been shortened by intersections in the first child
+                    // boxHit[1 - i] = children[1 - i]->bbox.contains(ray.o) || children[1 - i]->bbox.rayIntersect(ray);
+                    if (boxHit[1 - i]) {
+                        triInd[1 - i] = children[1 - i]->rayIntersectRecursive(ray, its, shadowRay, mesh);
+                        if (triInd[1 - i] == -2) return -2;  // shadow ray
+                    }
+                    cout << "666" << endl;
+                    return triInd[1 - i];
+                    // return (triInd[1 - i] == -1) ? triInd[i] : triInd[1 - i];
+                }
+                else {  // node is a leaf
+                    cout << "222 ";
+                    // loop over all triangles in this leaf
+                    int triInd = -1;  // assume no hit
+                    for (int i = 0; i < triIndices.size(); i++) {
+                        cout << triIndices[i] << ' ';
+                        // test for intersection
+                        if (Accel::testTriangle(mesh, triIndices[i], ray, shadowRay, its)) {
+                            if (shadowRay) return -2;
+                            // IMPORTANT for KDTrees: if the intersection point lies outside the bbox,
+                            // we have to ignore it
+                            if (bbox.contains(its.p)) {
+                                triInd = triIndices[i];
+                                cout << "p" << triInd << ' ';
+                                // shorten the ray to this intersection
+                                ray.maxt = its.t;
+                            }
+                            else {
+                                cout << "intersection out" << endl;
+                            }
+                        }
+                    }
+                    cout << endl;
+                    cout << "333" << ' ' << triInd << endl;
+                    return triInd;
+                }
             }
 
             std::vector<int> triIndices;
@@ -241,6 +296,10 @@ private:
             root = new Node(triangleIndices);
             root->bbox = mesh->getBoundingBox();
 
+            // for (auto in : root->triIndices)
+            //     cout << in << ' ';
+            // cout << endl;
+
             // build the tree recursively, starting from the root
             root->build(mesh, bboxes);
 
@@ -249,12 +308,20 @@ private:
                 BoundingBox3f::writeOBJ(filename, bboxes);
         }
 
-        void rayIntersect() {
-
+        int rayIntersect(Ray3f &ray, Intersection &its, bool shadowRay) const {
+            // check if ray hits the root bounding box first
+            if (!root->bbox.contains(ray.o) && !root->bbox.rayIntersect(ray)) {
+                return -1;
+            }
+            cout << "000 " << &(root->triIndices[0]) << endl;
+            // for (auto in : root->triIndices)
+            //     cout << in << ' ';
+            // cout << endl;
+            return root->rayIntersectRecursive(ray, its, shadowRay, mesh);
         }
 
-     private:
         Mesh* mesh;
+     private:
         Node* root;
         std::vector<BoundingBox3f> bboxes;
     };
