@@ -24,7 +24,7 @@ NORI_NAMESPACE_BEGIN
 
 void Accel::addMesh(Mesh *mesh) 
 {
-	m_bvhs.emplace_back(mesh);
+	// m_bvhs.emplace_back(mesh);
     m_kdtrees.emplace_back(mesh);
     m_bbox.expandBy(mesh->getBoundingBox());
 }
@@ -33,32 +33,26 @@ void Accel::build()
 {
 	auto before = std::chrono::system_clock::now();
 
-    // if there are only a few meshes in the scene,
-    // create individual BVHs
-    if (m_bvhs.size() < mergeThreshold) {
-        for (BVH& bvh : m_bvhs) {
-            bvh.build();
-        } 
-    }
-    // if there are many meshes in the scene,
-    // make one BVH for the whole scene with all meshes merged
-    else {
-        for (int i = 1; i < m_bvhs.size(); i++) {
-            m_bvhs[0].addMesh(m_bvhs[i].getMesh());
-        }
+    // // if there are only a few meshes in the scene,
+    // // create individual BVHs
+    // if (m_bvhs.size() < mergeThreshold) {
+    //     for (BVH& bvh : m_bvhs) {
+    //         bvh.build();
+    //     } 
+    // }
+    // // if there are many meshes in the scene,
+    // // make one BVH for the whole scene with all meshes merged
+    // else {
+    //     for (int i = 1; i < m_bvhs.size(); i++) {
+    //         m_bvhs[0].addMesh(m_bvhs[i].getMesh());
+    //     }
         
-        m_bvhs[0].build();  // m_bvhs[0] contains all meshes
-    }
+    //     m_bvhs[0].build();  // m_bvhs[0] contains all meshes
+    // }
 
     for (KDTree& kdtree : m_kdtrees) {
         kdtree.build();
     }
-
-    // get underlying buffer
-    std::streambuf* orig_buf = cout.rdbuf();
-
-    // set null
-    cout.rdbuf(NULL);
 
 	auto after = std::chrono::system_clock::now();
 
@@ -71,47 +65,21 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
 
     Ray3f ray(ray_); /// Make a copy of the ray (we will need to update its '.maxt' value)
 
-	// for (const BVH& bvh : m_bvhs)
-	// {
-    //     int triInd = bvh.rayIntersect(ray, its, shadowRay);
-    //     if (triInd == -2) return true;  // -2 -> shadow ray
-    //     if (triInd != -1) {
-    //         foundIntersection = true;
-    //         closestIdx = triInd;
-    //     }
-
-    //     if (m_bvhs.size() >= mergeThreshold) {
-    //         // if there are many meshes, we only have one merged BVH: the first one.
-    //         // so break after the first one
-    //         break;
-    //     }
-	// }
-    cout << "Ray trace started..." << endl;
-
-    // TODO: compare the result of rayIntersect with the BVH? Should they always be equal?
-    // TODO: compiler flags -O1 - 3
-        // there are debug, release with debug info and release builds. use the debug build, the jumping should go
-
-    for (const KDTree& kdtree : m_kdtrees)
-    {   
-        cout << "-[tri, vert]: " << kdtree.mesh->getTriangleCount() << ' ' << kdtree.mesh->getVertexCount() << endl;
-        int triInd = kdtree.rayIntersect(ray, its, shadowRay);
-        its.mesh;
-        cout << "--after ray intersect: " << triInd << ' ';
-        cout << its.mesh << ' ';
-        // cout << its.p.toString() << endl;
-        // cout << its.mesh->getVertexCount() << endl;
-        cout << "--" << endl;
-        // cout << "--" << ' ' << triInd << ' ' << its.mesh->getVertexCount() << ' ' << its.mesh->getTriangleCount() << endl;
-        // if (closestIdx == 7) exit(1);
+	for (const BVH& bvh : m_bvhs)
+	{
+        int triInd = bvh.rayIntersection(ray, its, shadowRay);
         if (triInd == -2) return true;  // -2 -> shadow ray
         if (triInd != -1) {
             foundIntersection = true;
             closestIdx = triInd;
-            cout << "--updated" << endl;
         }
-    }
-    cout << "---: " << closestIdx << endl;
+
+        if (m_bvhs.size() >= mergeThreshold) {
+            // if there are many meshes, we only have one merged BVH: the first one.
+            // so break after the first one
+            break;
+        }
+	}
 
     if (foundIntersection) {
         /* At this point, we now know that there is an intersection,
@@ -120,10 +88,8 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
            The following computes a number of additional properties which
            characterize the intersection (normals, texture coordinates, etc..)
         */
-        cout << "----" << ' ' << closestIdx << ' ' << its.mesh->getVertexCount() << ' ' << its.mesh->getTriangleCount() << endl;
         computeItsProps(closestIdx, its);
     }
-    cout << "over" << endl;
 
     return foundIntersection;
 }
