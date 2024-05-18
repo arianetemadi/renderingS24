@@ -84,6 +84,7 @@ private:
             Node (int leftRange, int rightRange) {
                 triRange[0] = leftRange;
                 triRange[1] = rightRange;
+                nTriangles = rightRange - leftRange;
             }
             
             // recursively build this node
@@ -98,12 +99,11 @@ private:
             void computeBoundingBox(std::vector<int>& triangleIndices,
                 const std::vector<BoundingBox3f>& bboxes);
 
-            int nTriangles() { return triRange[1] - triRange[0]; }
-
             BoundingBox3f bbox;
             Node *children[2];
             int triRange[2];  // [inclusive, exclusive), range of indices in 'triangleIndices'
             bool isInterior = false;
+            int nTriangles;
         };
 
         // build the BVH (Bounding Volume Hierarchy)
@@ -120,9 +120,9 @@ private:
             }
 
             // I implemented two versions: recursive and iterative
-            // surprisingly, the recursive version is slightly faster
-            return root->rayIntersectRecursive(triangleIndices, meshes, meshOffset, meshMap, ray, its, shadowRay);
-            // return rayIntersectIterative(root, ray, its, shadowRay);
+            // the recursive is faster on smaller scenes, but the iterative is faster on larger scenes
+            // return root->rayIntersectRecursive(triangleIndices, meshes, meshOffset, meshMap, ray, its, shadowRay);
+            return rayIntersectIterative(root, ray, its, shadowRay);
         }
 
 		Mesh* getMesh() { return meshes[0]; }

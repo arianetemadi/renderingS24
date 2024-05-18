@@ -91,7 +91,7 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
 
 void Accel::BVH::Node::build(std::vector<int>& triangleIndices, BVH::Type type,
             const std::vector<BoundingBox3f>& bboxes, const std::vector<Point3f>& centroids) {
-    if (nTriangles() <= 10) {  // leaf node
+    if (nTriangles <= 10) {  // leaf node
         return;
     }
     
@@ -105,7 +105,7 @@ void Accel::BVH::Node::build(std::vector<int>& triangleIndices, BVH::Type type,
         splitAxis = bbox.getLargestAxis();
 
         // choose the median of the range for splitting
-        splitInd = nTriangles() / 2;
+        splitInd = nTriangles / 2;
     }
     /* Surface Area Heuristic (SAH) */
     else if (type == BVH::Type::SAH) {
@@ -124,19 +124,19 @@ void Accel::BVH::Node::build(std::vector<int>& triangleIndices, BVH::Type type,
                         });
             
             // compute the bounding boxes of left and right for all splits
-            std::vector<BoundingBox3f> BBL(nTriangles() - 1);
-            std::vector<BoundingBox3f> BBR(nTriangles() - 1);
+            std::vector<BoundingBox3f> BBL(nTriangles - 1);
+            std::vector<BoundingBox3f> BBR(nTriangles - 1);
             BBL[0] = bboxes[triangleIndices[triRange[0]]];
             BBR[0] = bboxes[triangleIndices[triRange[1] - 1]];
-            for (int i = 1; i < nTriangles() - 1; i++) {
+            for (int i = 1; i < nTriangles - 1; i++) {
                 BBL[i] = BoundingBox3f::merge(BBL[i - 1], bboxes[triangleIndices[triRange[0] + i]]);
                 BBR[i] = BoundingBox3f::merge(BBR[i - 1], bboxes[triangleIndices[triRange[1] - 1 - i]]);
             }
 
             // find the split with the minimum expected cost
-            for (int i = 0; i < nTriangles() - 1; i++) {
+            for (int i = 0; i < nTriangles - 1; i++) {
                 float cost = BBL[i].getSurfaceArea() * (i + 1)
-                            + BBR[nTriangles() - 2 - i].getSurfaceArea() * (nTriangles() - 1 - i);
+                            + BBR[nTriangles - 2 - i].getSurfaceArea() * (nTriangles - 1 - i);
                 if (cost < leastCost) {
                     leastCost = cost;
                     splitAxis = sa;
@@ -229,6 +229,7 @@ void Accel::BVH::Node::computeBoundingBox(std::vector<int>& triangleIndices,
 
 void Accel::BVH::build() {
     // initialize the mesh index map
+    meshOffset.reserve(meshes.size());
     for (int m = 0; m < meshes.size(); m++) {
         Mesh* mesh = meshes[m];
         meshOffset.push_back(meshMap.size());
@@ -253,7 +254,6 @@ void Accel::BVH::build() {
 
     // init root
     root = new Node(0, triangleIndices.size());
-    // root->bbox = mesh->getBoundingBox();
     root->computeBoundingBox(triangleIndices, bboxes);
 
     // start building the tree recursively

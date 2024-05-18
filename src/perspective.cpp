@@ -40,10 +40,10 @@ public:
         /* Specifies an optional camera-to-world transformation. Default: none */
         m_cameraToWorld = propList.getTransform("toWorld", Transform());
 
-        /* Specify camera velocity for motion blur */
-        m_cameraToWorldOriginal = m_cameraToWorld;
-        motionBlur = propList.getBoolean("motionBlur", false);
-        velocity = propList.getVector("motionBlurVelocity", Vector3f(0.f));
+        // /* Specify camera velocity for motion blur */
+        // m_cameraToWorldOriginal = m_cameraToWorld;
+        // motionBlur = propList.getBoolean("motionBlur", false);
+        // velocity = propList.getVector("motionBlurVelocity", Vector3f(0.f));
 
         /* Horizontal field of view in degrees */
         m_fov = propList.getFloat("fov", 30.0f);
@@ -52,10 +52,10 @@ public:
         m_nearClip = propList.getFloat("nearClip", 1e-4f);
         m_farClip = propList.getFloat("farClip", 1e4f);
 
-        /* Depth of Field (DoF) */
-        DoF = propList.getBoolean("DoF", false);
-        aperture = propList.getFloat("aperture", 100);
-        focalLength = propList.getFloat("focalLength", 900);
+        // /* Depth of Field (DoF) */
+        // DoF = propList.getBoolean("DoF", false);
+        // aperture = propList.getFloat("aperture", 100);
+        // focalLength = propList.getFloat("focalLength", 900);
 
         m_rfilter = NULL;
     }
@@ -115,26 +115,26 @@ public:
         ray.maxt = m_farClip * invZ;
         ray.update();
 
-        /* Depth of Field */
-        if (DoF) {
-            // find the camera direction
-            Point3f np22 = m_sampleToCamera * Point3f(0.5, 0.5, 0);  // middle pixel
-            Vector3f cam_dir = np22.normalized();
-            cam_dir = m_cameraToWorld * cam_dir;
+        // /* Depth of Field */
+        // if (DoF) {
+        //     // find the camera direction
+        //     Point3f np22 = m_sampleToCamera * Point3f(0.5, 0.5, 0);  // middle pixel
+        //     Vector3f cam_dir = np22.normalized();
+        //     cam_dir = m_cameraToWorld * cam_dir;
 
-            d = ray.d;
+        //     d = ray.d;
 
-            // new origin
-            Vector3f o = m_cameraToWorld * Point3f(aperture * apertureSample(0), aperture * apertureSample(1), 0);
-            ray.o = o;
+        //     // new origin
+        //     Vector3f o = m_cameraToWorld * Point3f(aperture * apertureSample(0), aperture * apertureSample(1), 0);
+        //     ray.o = o;
 
-            // new direction
-            Vector3f a = o - m_cameraToWorld * Point3f(0, 0, 0);
-            float t = focalLength / cam_dir.dot(d);
-            ray.d = t * d - a;
+        //     // new direction
+        //     Vector3f a = o - m_cameraToWorld * Point3f(0, 0, 0);
+        //     float t = focalLength / cam_dir.dot(d);
+        //     ray.d = t * d - a;
 
-            ray.update();
-        }
+        //     ray.update();
+        // }
 
         return Color3f(1.0f);
     }
@@ -155,18 +155,18 @@ public:
 
     // For motion blur
     // TODO: refactor the boolean variable?
-    void animate(const float &time) {
-        if (motionBlur) {
-            Eigen::Matrix4f translationMatrix;
-            Vector3f translation = time * velocity;
-            translationMatrix <<
-                1, 0, 0, translation(0),
-                0, 1, 0, translation(1),
-                0, 0, 1, translation(2),
-                0, 0, 0, 1;
-            m_cameraToWorld = Transform(translationMatrix) * m_cameraToWorldOriginal;
-        }
-    }
+    // void animate(const float &time) {
+    //     if (motionBlur) {
+    //         Eigen::Matrix4f translationMatrix;
+    //         Vector3f translation = time * velocity;
+    //         translationMatrix <<
+    //             1, 0, 0, translation(0),
+    //             0, 1, 0, translation(1),
+    //             0, 0, 1, translation(2),
+    //             0, 0, 0, 1;
+    //         m_cameraToWorld = Transform(translationMatrix) * m_cameraToWorldOriginal;
+    //     }
+    // }
 
     /// Return a human-readable summary
     std::string toString() const {
@@ -194,15 +194,15 @@ private:
     float m_nearClip;
     float m_farClip;
 
-    /* For Motion Blur */
-    bool motionBlur;
-    Transform m_cameraToWorldOriginal;  // Original camera transformation
-    Vector3f velocity;  // Camera velocity
+    // /* For Motion Blur */
+    // bool motionBlur;
+    // Transform m_cameraToWorldOriginal;  // Original camera transformation
+    // Vector3f velocity;  // Camera velocity
 
-    /* For Depth of Field (DoF) */
-    bool DoF;
-    float aperture;
-    float focalLength;
+    // /* For Depth of Field (DoF) */
+    // bool DoF;
+    // float aperture;
+    // float focalLength;
 };
 
 NORI_REGISTER_CLASS(PerspectiveCamera, "perspective");

@@ -62,8 +62,8 @@ static void renderBlock(Scene *scene, Sampler *sampler,
 
                 /* Sample a ray from the camera */
                 Ray3f ray;
-                float motionBlurTime = sampler->next1D();
-                camera->animate(motionBlurTime);  // move the camera for motion blur
+                // float motionBlurTime = sampler->next1D();
+                // camera->animate(motionBlurTime);  // move the camera for motion blur
                 Color3f value = camera->sampleRay(ray, pixelSample, apertureSample);
 
                 /* Compute the incident radiance */
