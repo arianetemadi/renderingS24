@@ -280,7 +280,8 @@ int Accel::BVH::rayIntersectIterative(Node* start, Ray3f &ray, Intersection &its
             Node *children[2];
             children[0] = node->children[0];
             children[1] = node->children[1];
-            // check if ray hits the children bounding boxes
+            // compute the nearT for the two children bounding boxes
+            // the output of the rayIntersect is not taken into account at this point
             float nearT[2], farT[2];
             children[0]->bbox.rayIntersect(ray, nearT[0], farT[0]);
             children[1]->bbox.rayIntersect(ray, nearT[1], farT[1]);
