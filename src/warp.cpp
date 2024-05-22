@@ -53,10 +53,7 @@ Point2f Warp::squareToUniformDisk(const Point2f &sample) {
 }
 
 float Warp::squareToUniformDiskPdf(const Point2f &p) {
-	/*
-	Assignment 3: Complete this function.
-	*/
-    throw NoriException("Warp::squareToUniformDiskPdf() is not yet implemented!");
+	return (p(0) * p(0) + p(1) * p(1) <= 1) ? INV_PI : 0.0f;
 }
 
 Vector3f Warp::squareToUniformSphere(const Point2f &sample) {
