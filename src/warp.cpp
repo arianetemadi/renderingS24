@@ -31,17 +31,15 @@ float Warp::squareToUniformSquarePdf(const Point2f &sample) {
 }
 
 Point2f Warp::squareToTent(const Point2f &sample) {
-	/*
-	Assignment 3: Complete this function.
-	*/
-	throw NoriException("Warp::squareToTent() is not yet implemented!");
+	float x = (sample(0) <= 0.5f) ? (sqrt(2 * sample(0)) - 1) : (1 - sqrt(2 * (1 - sample(0))));
+	float y = (sample(1) <= 0.5f) ? (sqrt(2 * sample(1)) - 1) : (1 - sqrt(2 * (1 - sample(1))));
+	return Point2f(x, y);
 }
 
 float Warp::squareToTentPdf(const Point2f &p) {
-	/*
-	Assignment 3: Complete this function.
-	*/
-    throw NoriException("Warp::squareToTentPdf() is not yet implemented!");
+	float pdf0 = (abs(p(0)) <= 1.0f) ? (1 - abs(p(0))) : 0.0f;
+	float pdf1 = (abs(p(1)) <= 1.0f) ? (1 - abs(p(1))) : 0.0f;
+	return pdf0 * pdf1;
 }
 
 Point2f Warp::squareToUniformDisk(const Point2f &sample) {
