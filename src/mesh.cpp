@@ -112,9 +112,7 @@ void Mesh::addChild(NoriObject *obj) {
 
         case EEmitter: {
                 Emitter *emitter = static_cast<Emitter *>(obj);
-                emitter->printHasMesh();
                 emitter->setMesh(this);
-                emitter->printHasMesh();
                 if (m_emitter)
                     throw NoriException(
                         "Mesh: tried to register multiple Emitter instances!");

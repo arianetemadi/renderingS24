@@ -48,6 +48,7 @@ public:
         }
         /* Surface sampling */
         else {
+            // TODO: Multiple emitters
             const Mesh* emitterMesh = scene->getEmitters()[0]->getMesh();
 
             /* Sample point uniformly at random on the emitter mesh */
