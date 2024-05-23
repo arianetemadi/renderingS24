@@ -66,6 +66,9 @@ void Scene::addChild(NoriObject *obj) {
                 Mesh *mesh = static_cast<Mesh *>(obj);
                 m_accel->addMesh(mesh);
                 m_meshes.push_back(mesh);
+                if (mesh->isEmitter()) {
+                    m_emitters.push_back(mesh->getEmitter());
+                }
             }
             break;
         

@@ -116,12 +116,16 @@ public:
     std::string toString() const;
 
     EClassType getClassType() const { return EScene; }
+
+    const std::vector<Emitter*>& getEmitters() const { return m_emitters; }
+
 private:
     std::vector<Mesh *> m_meshes;
     Integrator *m_integrator = nullptr;
     Sampler *m_sampler = nullptr;
     Camera *m_camera = nullptr;
     Accel *m_accel = nullptr;
+    std::vector<Emitter*> m_emitters;
 };
 
 NORI_NAMESPACE_END

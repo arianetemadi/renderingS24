@@ -18,9 +18,12 @@
 
 #pragma once
 
+#include <utility>
+#include <Eigen/Geometry>
 #include <nori/object.h>
 #include <nori/frame.h>
 #include <nori/bbox.h>
+#include <nori/dpdf.h>
 
 NORI_NAMESPACE_BEGIN
 
@@ -164,6 +167,48 @@ public:
      * provided by this instance
      * */
     EClassType getClassType() const { return EMesh; }
+
+    std::pair<Point3f, Normal3f> samplePosition(Point3f sample) const {
+        // TODO: precompute dpdf in mesh
+        DiscretePDF dpdf(getTriangleCount());
+        for (uint32_t i = 0; i < getTriangleCount(); i++) {
+            dpdf.append(surfaceArea(i));
+        }
+        dpdf.normalize();
+
+        // sample a triangle from the mesh
+        uint32_t triInd = dpdf.sample(sample(0));
+
+        // sample a point on the triangle
+        uint32_t i0 = m_F(0, triInd), i1 = m_F(1, triInd), i2 = m_F(2, triInd);
+        Point3f p0 = m_V.col(i0), p1 = m_V.col(i1), p2 = m_V.col(i2);
+
+        if (sample(1) + sample(2) > 1.0f) {
+            sample(1) = 1 - sample(1);
+            sample(2) = 1 - sample(2);
+        }
+        m_N.col(0);
+        // cout << m_N.size() << endl;
+        Point3f samplePoint = p0 + sample(1) * (p1 - p0) + sample(2) * (p2 - p0);
+        // TODO: barycentric coordinates with 1 - u - v, u, v. in what order?
+        Normal3f samplePointNormal;
+        if (m_N.size() > 0) {
+            samplePointNormal = (m_N.col(i0) + m_N.col(i1) + m_N.col(i2)).normalized();
+        } else {
+            samplePointNormal = (p1 - p0).cross(p2 - p0).normalized();
+        }
+
+        return std::make_pair(samplePoint, samplePointNormal);
+    }
+
+    float pdf() const {  // does it need to have any input if its uniform?
+        float totalSurfaceArea = 0;
+        for (uint32_t i = 0; i < getTriangleCount(); i++) {
+            totalSurfaceArea += surfaceArea(i);
+        }
+        // TODO: precompute
+        return 1.0f / totalSurfaceArea;
+    }
 
 protected:
     /// Create an empty mesh

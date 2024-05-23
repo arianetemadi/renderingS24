@@ -121,6 +121,18 @@ public:
      * provided by this instance
      * */
     EClassType getClassType() const { return EEmitter; }
+
+    void setMesh(Mesh* m) { mesh = m; hasMesh = true; }
+
+    const Mesh* getMesh() const { return mesh; }
+
+    void printHasMesh() {
+        cout << "hasMesh: " << hasMesh << endl;
+    }
+
+private:
+    Mesh* mesh;
+    bool hasMesh = false;
 };
 
 inline std::string EmitterParams::toString() const {

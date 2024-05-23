@@ -27,7 +27,7 @@ public:
     }
 
 private:
-    Color3f radiance;
+    Color3f radiance;  // TODO: take to Emitter class?
 };
 
 NORI_REGISTER_CLASS(AreaEmitter, "area");
