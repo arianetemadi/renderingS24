@@ -19,6 +19,7 @@
 #include <nori/bsdf.h>
 #include <nori/frame.h>
 #include <nori/warp.h>
+#include <cmath>
 
 NORI_NAMESPACE_BEGIN
 
@@ -53,25 +54,27 @@ public:
             Frame::cosTheta(params.wo) <= 0)
             return 0.0f;
 
-        return {};
+        return INV_PI / 2;
+        // return Frame::cosTheta(params.wo) * INV_PI;
     }
 
     /// Draw a a sample from the BRDF model
     BSDFRecord sample(const Vector3f &wi, const Point2f &sample) const {
         BSDFRecord bRec;
         bRec.params.wi = wi;
-
-        if (Frame::cosTheta(wi) <= 0)
-            return bRec;
-
         bRec.measure = ESolidAngle;
 
         /* Warp a uniformly distributed sample on [0,1]^2
            to a direction on the hemisphere */
-        bRec.params.wo = {};
+        bRec.params.wo = Warp::squareToUniformHemisphere(sample);
+
+        if (Frame::cosTheta(wi) <= 0 ||
+            Frame::cosTheta(bRec.params.wo) <= 0)
+            return bRec;
 
         // TODO: eval() / pdf() * cos(theta); consider, that some terms cancel out
-        bRec.value = {};
+        bRec.value = eval(bRec.params) * Frame::cosTheta(bRec.params.wo) / pdf(bRec.params);
+        // bRec.value = m_albedo;  // TODO: 
 
         return bRec;
     }

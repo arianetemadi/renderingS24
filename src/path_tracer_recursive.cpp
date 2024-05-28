@@ -68,19 +68,20 @@ private:
             }
         }
 
+        /* Sample BSDF */
+        BSDFRecord bRec = 
+            its.mesh->getBSDF()->sample(-its.toLocal(ray.d), sampler->next2D());
+
         /* Sample ray in random direction */
         Ray3f sample_ray;
         sample_ray.o = its.p + Epsilon * its.shFrame.n;
-        sample_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
+        sample_ray.d = its.toWorld(bRec.params.wo);
         sample_ray.mint = Epsilon;
         sample_ray.update();
 
         /* Return the incoming direct radiance from this direction */
-        BSDFParams params {its.toLocal(sample_ray.d), -its.toLocal(ray.d)};
         return Li_recursive(scene, sampler, sample_ray, bounce_cnt + 1)
-                * (sample_ray.d.dot(its.shFrame.n))
-                * its.mesh->getBSDF()->eval(params)
-                * 2 * M_PI
+                * bRec.value
                 / kill_prob
                 + emitted_radiance;
     }
@@ -122,23 +123,24 @@ private:
                 }
             }
 
-            /* Sample ray in random direction */
-            Ray3f sample_ray;
-            sample_ray.o = its.p + Epsilon * its.shFrame.n;
-            sample_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
-            sample_ray.mint = Epsilon;
-            sample_ray.update();
+            /* Sample BSDF */
+            BSDFRecord bRec = 
+                its.mesh->getBSDF()->sample(-its.toLocal(ray_copy.d), sampler->next2D());
+
+            // if (throughput.isNaN().any()) {
+            //     cout << throughput << endl;
+            // }
 
             /* Update throughput */
-            BSDFParams params {its.toLocal(sample_ray.d), -its.toLocal(ray_copy.d)};
-            throughput *= (sample_ray.d.dot(its.shFrame.n))
-                        * its.mesh->getBSDF()->eval(params)
-                        * 2 * M_PI
-                        / kill_prob;
+            throughput *= bRec.value;
+            throughput /= kill_prob;
 
             /* Bounce the ray */
+            ray_copy.o = its.p + Epsilon * its.shFrame.n;
+            ray_copy.d = its.toWorld(bRec.params.wo);
+            ray_copy.mint = Epsilon;
+            ray_copy.update();
             bounce_cnt++;
-            ray_copy = Ray3f(sample_ray);
         }
 
         return color;

@@ -42,12 +42,19 @@ public:
 
         // TODO: Check if wi is in same hemisphere as surface normal,
         // otherwise return black
+        if (Frame::cosTheta(wi) <= 0)
+            return bRec;
         // TODO: Generate a sample of the BRDF's function into bRec.wo
+        bRec.params.wi = wi;
+        bRec.params.wo = Vector3f(-wi.x(), -wi.y(), wi.z());
 
         // Use this value because mirror is a discrete BRDF.
         bRec.measure = EDiscrete;
 
         // TODO: Return correct BRDF value for drawn sample
+        bRec.value = Color3f(1.0f);
+
+        return bRec;
     }
 
     std::string toString() const {
