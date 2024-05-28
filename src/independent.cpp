@@ -74,6 +74,10 @@ public:
         );
     }
 
+    uint32_t nextInt(int n) {
+        return m_random.nextUInt() % n;
+    }
+
     std::string toString() const {
         return tfm::format("Independent[sampleCount=%i]", m_sampleCount);
     }

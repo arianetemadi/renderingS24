@@ -168,14 +168,8 @@ public:
      * */
     EClassType getClassType() const { return EMesh; }
 
+    // TODO: move samplePosition and pdf implementations to the functions in the emitter interface?
     std::pair<Point3f, Normal3f> samplePosition(Point3f sample) const {
-        // TODO: precompute dpdf in mesh
-        DiscretePDF dpdf(getTriangleCount());
-        for (uint32_t i = 0; i < getTriangleCount(); i++) {
-            dpdf.append(surfaceArea(i));
-        }
-        dpdf.normalize();
-
         /* Sample a triangle of the mesh with respect to surface areas */
         uint32_t triInd = dpdf.sample(sample(0));
 
@@ -194,11 +188,6 @@ public:
     }
 
     float pdf() const {
-        float totalSurfaceArea = 0;
-        for (uint32_t i = 0; i < getTriangleCount(); i++) {
-            totalSurfaceArea += surfaceArea(i);
-        }
-        // TODO: precompute
         return 1.0f / totalSurfaceArea;
     }
 
@@ -215,6 +204,8 @@ protected:
     BSDF         *m_bsdf = nullptr;      ///< BSDF of the surface
     Emitter    *m_emitter = nullptr;     ///< Associated emitter, if any
     BoundingBox3f m_bbox;                ///< Bounding box of the mesh
+    float totalSurfaceArea;              ///< Sum of triangle surface areas
+    DiscretePDF dpdf;                    ///< Distribution corresponding to triangle surface areas
 };
 
 NORI_NAMESPACE_END

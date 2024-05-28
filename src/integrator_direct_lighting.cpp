@@ -4,6 +4,7 @@
 #include <nori/sampler.h>
 #include <nori/warp.h>
 #include <nori/emitter.h>
+#include <nori/bsdf.h>
 
 NORI_NAMESPACE_BEGIN
 
@@ -43,13 +44,17 @@ public:
             /* Return the incoming direct radiance from this direction */
             Color3f color = shadow_its.mesh->getEmitter()->eval(EmitterParams());
             color *= (shadow_ray.d.dot(its.shFrame.n));
-            color *= 2.0;
+            BSDFParams params {its.toLocal(shadow_ray.d), -its.toLocal(ray.d)};
+            color *= its.mesh->getBSDF()->eval(params);  // BRDF
+            color *= 2.0 * M_PI;  // hemisphere surface area. equivalent to dividing by the pdf (/= (1/2pi))
             return color;
         }
         /* Surface sampling */
         else {
-            // TODO: Multiple emitters
-            const Mesh* emitterMesh = scene->getEmitters()[0]->getMesh();
+            /* Choose an emitter uniformly at random */
+            uint32_t emitterInd = sampler->nextInt(scene->getEmitters().size());
+            const Emitter* emitter = scene->getEmitters()[emitterInd];
+            const Mesh* emitterMesh = emitter->getMesh();
 
             /* Sample point uniformly at random on the emitter mesh */
             std::pair<Point3f, Normal3f> sample = emitterMesh->samplePosition(sampler->next3D());
@@ -66,25 +71,29 @@ public:
             shadow_ray.update();
 
             /* Return black if occluded */
-            if (scene->rayIntersect(shadow_ray)) {  // todo shadow=true
+            if (scene->rayIntersect(shadow_ray)) {
                 return Color3f(0.0f);
             }
 
-            Color3f color = scene->getEmitters()[0]->eval(EmitterParams());  // radiance of the emitter
+            Color3f color = emitter->eval(EmitterParams());  // radiance of the emitter
             /* In theory, the following two cosines should not be negative
                 at this point since there is no occlusion, although in practice
                 we need to catch some negatives */
             color *= std::max(0.0f, shadow_ray.d.dot(its.shFrame.n));  // cosine
             color *= std::max(0.0f, (-shadow_ray.d).dot(sample.second));  // emitter cosine
             color /= dist.squaredNorm();  // emitter distance
-            color *= INV_PI;  // BRDF todo
-            color /= emitterMesh->pdf();  // acts like multiplying by emitter surface area
+            BSDFParams params {its.toLocal(shadow_ray.d), -its.toLocal(ray.d)};
+            color *= its.mesh->getBSDF()->eval(params);  // BRDF
+            color /= emitterMesh->pdf() / scene->getEmitters().size();  // acts like multiplying by emitter surface area * #emitters
 
             return color;
         }
     }
 
-    std::string toString() const { return "DirectLightingIntegrator[]"; }
+    std::string toString() const {
+        return tfm::format("DirectLightingIntegrator[surfaceSampling=%i]", surfaceSampling);
+    }
+
 
 private:
     bool surfaceSampling;    

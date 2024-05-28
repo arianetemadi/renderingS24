@@ -97,6 +97,9 @@ public:
     /// Retrieve the next three component values from the current sample
     virtual Point3f next3D() = 0;
 
+    /// Return a uniformly random unsigned int modulo n
+    virtual uint32_t nextInt(int n) = 0;
+
     /// Return the number of configured pixel samples
     virtual size_t getSampleCount() const { return m_sampleCount; }
 
