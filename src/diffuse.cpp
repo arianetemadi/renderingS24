@@ -30,6 +30,7 @@ class Diffuse : public BSDF {
 public:
     Diffuse(const PropertyList &propList) {
         m_albedo = propList.getColor("albedo", Color3f(0.5f));
+        useCosine = propList.getBoolean("use_cosine", false);
     }
 
     /// Evaluate the BRDF model
@@ -54,11 +55,14 @@ public:
             Frame::cosTheta(params.wo) <= 0)
             return 0.0f;
 
-        return INV_PI / 2;
-        // return Frame::cosTheta(params.wo) * INV_PI;
+        if (useCosine) {
+            return Warp::squareToCosineHemispherePdf(params.wo);
+        } else {
+            return Warp::squareToUniformHemispherePdf(params.wo);
+        }
     }
 
-    /// Draw a a sample from the BRDF model
+    /// Draw a sample from the BRDF model
     BSDFRecord sample(const Vector3f &wi, const Point2f &sample) const {
         BSDFRecord bRec;
         bRec.params.wi = wi;
@@ -66,15 +70,19 @@ public:
 
         /* Warp a uniformly distributed sample on [0,1]^2
            to a direction on the hemisphere */
-        bRec.params.wo = Warp::squareToUniformHemisphere(sample);
+        if (useCosine) {
+            bRec.params.wo = Warp::squareToCosineHemisphere(sample);
+        } else {
+            bRec.params.wo = Warp::squareToUniformHemisphere(sample);
+        }
 
         if (Frame::cosTheta(wi) <= 0 ||
             Frame::cosTheta(bRec.params.wo) <= 0)
             return bRec;
 
-        // TODO: eval() / pdf() * cos(theta); consider, that some terms cancel out
+        // for cosine sampling, the value can be set directly to m_albedo,
+        // but I didn't do it to prioritize code readability
         bRec.value = eval(bRec.params) * Frame::cosTheta(bRec.params.wo) / pdf(bRec.params);
-        // bRec.value = m_albedo;  // TODO: 
 
         return bRec;
     }
@@ -94,6 +102,7 @@ public:
     EClassType getClassType() const { return EBSDF; }
 private:
     Color3f m_albedo;
+    bool useCosine;
 };
 
 NORI_REGISTER_CLASS(Diffuse, "diffuse");
