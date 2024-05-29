@@ -191,6 +191,22 @@ public:
         return 1.0f / totalSurfaceArea;
     }
 
+    void runPrecomputations() {
+        /* Precompute mesh surface area */
+        totalSurfaceArea = 0;
+        for (uint32_t i = 0; i < getTriangleCount(); i++) {
+            totalSurfaceArea += surfaceArea(i);
+        }
+
+        /* Precompute a discrete distribution object
+            corresponding to triangle surface areas */
+        dpdf.reserve(getTriangleCount());
+        for (uint32_t i = 0; i < getTriangleCount(); i++) {
+            dpdf.append(surfaceArea(i));
+        }
+        dpdf.normalize();
+    }
+
 protected:
     /// Create an empty mesh
     Mesh();

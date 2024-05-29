@@ -125,19 +125,8 @@ public:
 
         m_name = filename.str();
 
-        /* Precompute mesh surface area */
-        totalSurfaceArea = 0;
-        for (uint32_t i = 0; i < getTriangleCount(); i++) {
-            totalSurfaceArea += surfaceArea(i);
-        }
-
-        /* Precompute a discrete distribution object
-            corresponding to triangle surface areas */
-        dpdf.reserve(getTriangleCount());
-        for (uint32_t i = 0; i < getTriangleCount(); i++) {
-            dpdf.append(surfaceArea(i));
-        }
-        dpdf.normalize();
+        // Pre-computations
+        runPrecomputations();
 
         cout << "done. (V=" << m_V.cols() << ", F=" << m_F.cols() << ", took "
              << timer.elapsedString() << " and "

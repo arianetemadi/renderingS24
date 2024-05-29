@@ -85,6 +85,9 @@ public:
                 v3.toString(),
                 normal.toString()
             );
+
+        // Pre-computations
+        runPrecomputations();
     }
 
 private:
