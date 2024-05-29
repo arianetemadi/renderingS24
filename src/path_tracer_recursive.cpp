@@ -127,10 +127,6 @@ private:
             BSDFRecord bRec = 
                 its.mesh->getBSDF()->sample(-its.toLocal(ray_copy.d), sampler->next2D());
 
-            // if (throughput.isNaN().any()) {
-            //     cout << throughput << endl;
-            // }
-
             /* Update throughput */
             throughput *= bRec.value;
             throughput /= kill_prob;

@@ -28,26 +28,26 @@ public:
 
         /* If hemisphere sampling */
         if (!surfaceSampling) {
-            /* Shoot ray to sample incoming direct radiance */
-            Ray3f shadow_ray;
-            shadow_ray.o = its.p + Epsilon * its.shFrame.n;
-            shadow_ray.d = its.toWorld(Warp::squareToUniformHemisphere(sampler->next2D()));
-            shadow_ray.mint = Epsilon;
-            shadow_ray.update();
-            Intersection shadow_its;
+            /* Sample BSDF */
+            BSDFRecord bRec = 
+                its.mesh->getBSDF()->sample(-its.toLocal(ray.d), sampler->next2D());
 
-            /* Return black since the ray did not reach light */
-            if (!scene->rayIntersect(shadow_ray, shadow_its) || !shadow_its.mesh->isEmitter()) {
+            /* Sample ray */
+            Ray3f sample_ray;
+            sample_ray.o = its.p + Epsilon * its.shFrame.n;
+            sample_ray.d = its.toWorld(bRec.params.wo);
+            sample_ray.mint = Epsilon;
+            sample_ray.update();
+            Intersection sample_its;
+
+            /* Return black if the ray does not reach light */
+            if (!scene->rayIntersect(sample_ray, sample_its) || !sample_its.mesh->isEmitter()) {
                 return Color3f(0.0f);
             }
 
             /* Return the incoming direct radiance from this direction */
-            Color3f color = shadow_its.mesh->getEmitter()->eval(EmitterParams());
-            color *= (shadow_ray.d.dot(its.shFrame.n));
-            BSDFParams params {its.toLocal(shadow_ray.d), -its.toLocal(ray.d)};
-            color *= its.mesh->getBSDF()->eval(params);  // BRDF
-            color *= 2.0 * M_PI;  // hemisphere surface area. equivalent to dividing by the pdf (/= (1/2pi))
-            return color;
+            return sample_its.mesh->getEmitter()->eval(EmitterParams())
+                    * bRec.value;
         }
         /* Surface sampling */
         else {
