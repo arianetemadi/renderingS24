@@ -4,6 +4,7 @@
 #include <nori/warp.h>
 #include <nori/emitter.h>
 #include <nori/bsdf.h>
+#include <nori/integrator_direct_lighting.h>
 
 NORI_NAMESPACE_BEGIN
 
@@ -73,46 +74,6 @@ private:
             }
         }
 
-        Color3f color;
-        if (nee) {
-            /* Choose an emitter uniformly at random */
-            uint32_t emitterInd = sampler->nextInt(scene->getEmitters().size());
-            const Emitter* emitter = scene->getEmitters()[emitterInd];
-            const Mesh* emitterMesh = emitter->getMesh();
-
-            /* Sample point uniformly at random on the emitter mesh */
-            std::pair<Point3f, Normal3f> sample = emitterMesh->samplePosition(sampler->next3D());
-            Vector3f dist = sample.first - its.p;
-
-            /* Check for occlusion */
-            Ray3f shadow_ray;
-            shadow_ray.o = its.p + Epsilon * its.shFrame.n;
-            shadow_ray.d = dist.normalized();
-            shadow_ray.mint = Epsilon;
-            // we want to find an intersection before the sample point,
-            // so shorten the maxt of the ray by a small amount
-            shadow_ray.maxt = dist.norm() - 100 * Epsilon;
-            shadow_ray.update();
-
-            /* Return black if occluded */
-            if (scene->rayIntersect(shadow_ray)) {
-                // return Color3f(0.0f);
-            }
-            else {
-
-            color = emitter->eval(EmitterParams());  // radiance of the emitter
-            /* In theory, the following two cosines should not be negative
-                at this point since there is no occlusion, although in practice
-                we need to catch some negatives */
-            color *= std::max(0.0f, shadow_ray.d.dot(its.shFrame.n));  // cosine
-            color *= std::max(0.0f, (-shadow_ray.d).dot(sample.second));  // emitter cosine
-            color /= dist.squaredNorm();  // emitter distance
-            BSDFParams params {its.toLocal(shadow_ray.d), -its.toLocal(ray.d)};
-            color *= its.mesh->getBSDF()->eval(params);  // BRDF
-            color /= emitterMesh->pdf() / scene->getEmitters().size();  // acts like multiplying by emitter surface area * #emitters
-        }}
-
-
         /* Sample BSDF */
         BSDFRecord bRec = 
             its.mesh->getBSDF()->sample(-its.toLocal(ray.d), sampler->next2D());
@@ -125,18 +86,20 @@ private:
         sample_ray.update();
 
         if (nee) {
-            // return color / kill_prob + emitted_radiance;
-            return (Li_recursive(scene, sampler, sample_ray, bounce_cnt + 1)
+            /* Next Event Estimation (NEE) */
+            Color3f direct = DirectLightingIntegrator(true).Li_one_bounce(scene, sampler, ray, its);
+            Color3f indirect = Li_recursive(scene, sampler, sample_ray, bounce_cnt + 1)
+                    * bRec.value;
+            return (direct + indirect)
+                    / kill_prob
+                    + emitted_radiance;
+        } else {
+            /* Without NEE */
+            return Li_recursive(scene, sampler, sample_ray, bounce_cnt + 1)
                     * bRec.value
-                    + color) / kill_prob
+                    / kill_prob
                     + emitted_radiance;
         }
-
-        /* Return the incoming direct radiance from this direction */
-        return Li_recursive(scene, sampler, sample_ray, bounce_cnt + 1)
-                * bRec.value
-                / kill_prob
-                + emitted_radiance;
     }
 
     /* Iterative version.
