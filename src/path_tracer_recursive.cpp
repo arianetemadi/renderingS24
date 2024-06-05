@@ -20,11 +20,11 @@ public:
     }
 
     Color3f Li(const Scene *scene, Sampler *sampler, const Ray3f &ray) const {
-        // if (iterative) {  // Default
-        //     return Li_iterative(scene, sampler, ray);
-        // } else {
+        if (iterative) {  // Default
+            return Li_iterative(scene, sampler, ray);
+        } else {
             return Li_recursive(scene, sampler, ray, 0);
-        // }
+        }
     }
     
     std::string toString() const { return "PathTracerRecursiveIntegrator[]"; }
@@ -125,10 +125,9 @@ private:
 
             /* Add the emitted radiance */
             Color3f emitted_radiance(0.f);
-            if (its.mesh->isEmitter()) {
+            if (its.mesh->isEmitter() && !(nee && bounce_cnt > 0)) {
                 emitted_radiance = its.mesh->getEmitter()->eval(EmitterParams());
             }
-            color += emitted_radiance * throughput;
 
             /* Russian Roulette */
             bool kill_cond = (russian_roulette && bounce_cnt > rr_min_bounces);
@@ -138,6 +137,18 @@ private:
                     break;
                 }
             }
+            throughput /= kill_prob;
+
+            if (nee) {
+                /* Next Event Estimation (NEE) */
+                color += DirectLightingIntegrator(true).Li_one_bounce(scene, sampler, ray_copy, its)
+                        * throughput
+                        + emitted_radiance;
+            } else {
+                /* Without NEE */
+                color += emitted_radiance
+                        * throughput;
+            }
 
             /* Sample BSDF */
             BSDFRecord bRec = 
@@ -145,7 +156,6 @@ private:
 
             /* Update throughput */
             throughput *= bRec.value;
-            throughput /= kill_prob;
 
             /* Bounce the ray */
             ray_copy.o = its.p + Epsilon * its.shFrame.n;
