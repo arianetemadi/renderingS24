@@ -47,7 +47,8 @@ private:
     /* Recursive version.
        Can be selected by setting the corresponding parameter in the
        scene file. */
-    Color3f Li_recursive(const Scene *scene, Sampler *sampler, const Ray3f &ray, int bounce_cnt) const {
+    Color3f Li_recursive(const Scene *scene, Sampler *sampler, const Ray3f &ray, int bounce_cnt,
+            EMeasure prevMeasure = EMeasure::ESolidAngle) const {
         /* Return black if reached the maximum number of bounces, only when no RR */
         if (!russian_roulette && bounce_cnt >= max_bounces) {
             return Color3f(0.0f);
@@ -61,7 +62,8 @@ private:
 
         /* If directly hit light, add the emitted radiance */
         Color3f emitted_radiance(0.0f);
-        if (its.mesh->isEmitter() && !(nee && bounce_cnt > 0)) {
+        if (its.mesh->isEmitter()
+                && (!nee || bounce_cnt == 0 || prevMeasure == EMeasure::EDiscrete)) {
             emitted_radiance = its.mesh->getEmitter()->eval(EmitterParams());
         }
 
@@ -87,15 +89,18 @@ private:
 
         if (nee) {
             /* Next Event Estimation (NEE) */
-            Color3f direct = DirectLightingIntegrator(true).Li_one_bounce(scene, sampler, ray, its);
-            Color3f indirect = Li_recursive(scene, sampler, sample_ray, bounce_cnt + 1)
+            Color3f direct(0.0f);
+            if (bRec.measure == EMeasure::ESolidAngle) {
+                direct = DirectLightingIntegrator(true).Li_one_bounce(scene, sampler, ray, its);
+            }
+            Color3f indirect = Li_recursive(scene, sampler, sample_ray, bounce_cnt + 1, bRec.measure)
                     * bRec.value;
             return (direct + indirect)
                     / kill_prob
                     + emitted_radiance;
         } else {
             /* Without NEE */
-            return Li_recursive(scene, sampler, sample_ray, bounce_cnt + 1)
+            return Li_recursive(scene, sampler, sample_ray, bounce_cnt + 1, bRec.measure)
                     * bRec.value
                     / kill_prob
                     + emitted_radiance;
@@ -110,6 +115,7 @@ private:
         Color3f throughput(1.f);
         int bounce_cnt = 0;
         Ray3f ray_copy(ray);
+        EMeasure prevMeasure = EMeasure::ESolidAngle;
 
         while (true) {
             /* stop if reached the maximum number of bounces, only when no RR */
@@ -125,7 +131,8 @@ private:
 
             /* Add the emitted radiance */
             Color3f emitted_radiance(0.f);
-            if (its.mesh->isEmitter() && !(nee && bounce_cnt > 0)) {
+            if (its.mesh->isEmitter()
+                    && (!nee || bounce_cnt == 0 || prevMeasure == EMeasure::EDiscrete)) {
                 emitted_radiance = its.mesh->getEmitter()->eval(EmitterParams());
             }
 
@@ -139,20 +146,23 @@ private:
             }
             throughput /= kill_prob;
 
+            /* Sample BSDF */
+            BSDFRecord bRec = 
+                its.mesh->getBSDF()->sample(-its.toLocal(ray_copy.d), sampler->next2D());
+
             if (nee) {
                 /* Next Event Estimation (NEE) */
-                color += DirectLightingIntegrator(true).Li_one_bounce(scene, sampler, ray_copy, its)
-                        * throughput
-                        + emitted_radiance;
+                if (bRec.measure == EMeasure::ESolidAngle) {
+                    color += DirectLightingIntegrator(true).Li_one_bounce(scene, sampler, ray_copy, its)
+                            * throughput;
+                }
+                color += emitted_radiance
+                        * throughput;
             } else {
                 /* Without NEE */
                 color += emitted_radiance
                         * throughput;
             }
-
-            /* Sample BSDF */
-            BSDFRecord bRec = 
-                its.mesh->getBSDF()->sample(-its.toLocal(ray_copy.d), sampler->next2D());
 
             /* Update throughput */
             throughput *= bRec.value;
@@ -163,6 +173,7 @@ private:
             ray_copy.mint = Epsilon;
             ray_copy.update();
             bounce_cnt++;
+            prevMeasure = bRec.measure;
         }
 
         return color;
