@@ -54,8 +54,9 @@ static void renderBlock(Scene *scene, Sampler *sampler,
     for (int y=0; y<size.y(); ++y) {
         for (int x=0; x<size.x(); ++x) {
             // block.emptySDBuffer();  // for computing the standard deviation of current pixel's value
-            Point2f pixelSample = Point2f(float(x + offset.x()), float(y + offset.y())) + Point2f(0.5f, 0.5f);  // go through the centre of the pixel
             for (uint32_t i=0; i<sampler->getSampleCount(); ++i) {
+                Point2f pixelSample = Point2f(float(x + offset.x()), float(y + offset.y()))
+                    + sampler->next2D();  // sample the pixel uniformly to antialias
                 pixelSample.x() = std::min(pixelSample.x(), std::nextafter(float(x + offset.x() + 1), 0.f));
                 pixelSample.y() = std::min(pixelSample.y(), std::nextafter(float(y + offset.y() + 1), 0.f));
                 Point2f apertureSample = Warp::squareToUniformDisk(sampler->next2D());
