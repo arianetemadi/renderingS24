@@ -71,15 +71,50 @@ void ImageBlock::fromBitmap(const Bitmap &bitmap) {
             coeffRef(y, x) << bitmap.coeff(y, x), 1;
 }
 
+// void ImageBlock::put(const Point2f &_pos, const Color3f &value) {
+//     if (!value.isValid()) {
+//         /* If this happens, go fix your code instead of removing this warning ;) */
+//         cerr << "Integrator: computed an invalid radiance value: " << value.toString() << endl;
+//         return;
+//     }
+//     Index y = std::max(Index(0), std::min(rows()-1, Index(_pos.y() - m_offset.y())));
+//     Index x = std::max(Index(0), std::min(cols()-1, Index(_pos.x() - m_offset.x())));
+//     coeffRef(y, x) += Color4f(value);    // Color4f appends a 1 in the constructor taking a vec3
+// }
+
 void ImageBlock::put(const Point2f &_pos, const Color3f &value) {
     if (!value.isValid()) {
         /* If this happens, go fix your code instead of removing this warning ;) */
-        cerr << "Integrator: computed an invalid radiance value: " << value.toString() << endl;
+        cerr << "Integrator: computed an invalid radiance value: "
+            << value.toString() << endl;
         return;
     }
-    Index y = std::max(Index(0), std::min(rows()-1, Index(_pos.y() - m_offset.y())));
-    Index x = std::max(Index(0), std::min(cols()-1, Index(_pos.x() - m_offset.x())));
-    coeffRef(y, x) += Color4f(value);    // Color4f appends a 1 in the constructor taking a vec3
+    /* Convert to pixel coordinates within the image block */
+    Point2f pos(
+        _pos.x() - 0.5f - (m_offset.x() - m_borderSize),
+        _pos.y() - 0.5f - (m_offset.y() - m_borderSize));
+    
+    /* Compute the rectangle of pixels that will need to be updated */
+    BoundingBox2i bbox(
+        Point2i((int) std::ceil(pos.x() - m_filterRadius),
+        (int) std::ceil(pos.y() - m_filterRadius)),
+        Point2i((int) std::floor(pos.x() + m_filterRadius),
+        (int) std::floor(pos.y() + m_filterRadius)));
+    bbox.clip(BoundingBox2i(Point2i(0, 0),
+        Point2i((int) cols() - 1,
+        (int) rows() - 1)));
+    /* Lookup values from the pre-rasterized filter */
+    for (int x=bbox.min.x(), idx = 0; x<=bbox.max.x(); ++x)
+        m_weightsX[idx++] = m_filter[(int) (std::abs(x-pos.x()) * m_lookupFactor)];
+    for (int y=bbox.min.y(), idx = 0; y<=bbox.max.y(); ++y)
+        m_weightsY[idx++] = m_filter[(int) (std::abs(y-pos.y()) * m_lookupFactor)];
+    /* Add the colour valuel after filtering to the current estimate.
+    * Color4f extends the Color3f value by appending a 1. Therefore,
+    * in the 4th component we are automatically accumulating the filter
+    * weight. */
+    for (int y=bbox.min.y(), yr=0; y<=bbox.max.y(); ++y, ++yr)
+        for (int x=bbox.min.x(), xr=0; x<=bbox.max.x(); ++x, ++xr)
+            coeffRef(y, x) += Color4f(value) * m_weightsX[xr] * m_weightsY[yr];
 }
     
 void ImageBlock::put(ImageBlock &b) {
