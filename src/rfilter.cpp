@@ -35,7 +35,7 @@ public:
     }
 
     float eval(float x) const {
-        throw NoriException("Unimplemented!");
+        return exp(-x*x/m_stddev/m_stddev/2) / (m_stddev * sqrt(2 * M_PI));
     }
 
     std::string toString() const {
@@ -63,7 +63,23 @@ public:
     }
 
     float eval(float x) const {
-        throw NoriException("Unimplemented!");
+        x = std::abs(x);
+        if (x < 1) {
+            return ((12 - 9 * m_B - 6 * m_C) * x * x * x
+                    + (-18 + 12 * m_B + 6 * m_C) * x * x
+                    + (6 - 2 * m_B))
+                    / 6;
+        }
+        else if (x < 2) {
+            return ((-m_B - 6 * m_C) * x * x * x
+                    + (6 * m_B + 30 * m_C) * x * x
+                    + (-12 * m_B - 48 * m_C) * x
+                    + (8 * m_B + 24 * m_C))
+                    / 6;
+        }
+        else {
+            return 0;
+        }
     }
 
     std::string toString() const {
