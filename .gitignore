@@ -50,3 +50,7 @@ x64
 *.jpeg
 *.exr
 /.cache
+
+!/*.png
+scenes/assignment4/meshes/Plane.010.obj
+scenes/assignment4/room.blend

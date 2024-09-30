@@ -1,0 +1,168 @@
+<?xml version="1.0" ?>
+<scene>
+	<integrator type="path_tracer_recursive">
+		<boolean name="rr" value="false"/>
+		<boolean name="nee" value="true"/>
+	</integrator>
+	<sampler type="independent">
+		<integer name="sampleCount" value="2500"/>
+	</sampler>
+	<camera type="perspective">
+		<float name="fov" value="53.1301017798049"/>
+		<float name="nearClip" value="0.10000000149011612"/>
+		<float name="farClip" value="100.0"/>
+		<integer name="width" value="1920"/>
+		<integer name="height" value="1080"/>
+		<transform name="toWorld">
+			<matrix value="-0.4839763939380646,-0.3310944736003876,-0.8100267648696899,-4.251174449920654,0.013758261688053608,0.9226656556129456,-0.3853553831577301,1.9028006792068481,0.8749728798866272,-0.19764746725559235,-0.4419931173324585,4.960763931274414,0.0,0.0,0.0,1.0"/>
+		</transform>
+	</camera>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.001.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.75,0.60,0.41"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.002.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.8, 0.8, 0.2"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.003.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.75,0.75,0.75"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.004.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.913, 0.913, 0.913"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Icosphere.001.obj"/>
+		<emitter type="area">
+			<color name="radiance" value="8000 14000 24000"/>
+		</emitter>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cylinder.000_Cylinder.002.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.06,0.04,0.02"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.007.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.75,0.75,0.75"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.005.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.22, 0.22, 0.21"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.006.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.22, 0.22, 0.21"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.008.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.22, 0.22, 0.21"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.009.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.22, 0.22, 0.21"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.020.obj"/>
+		<bsdf type="mirror"/>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.021.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.19, 0.19, 0.18"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.022.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.19, 0.19, 0.18"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.023.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.19, 0.19, 0.18"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.024.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.19, 0.19, 0.18"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.025.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.19, 0.19, 0.18"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.026.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.19, 0.19, 0.18"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Cube.027.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.12, 0.12, 0.11"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Plane.001.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.30,0.80,0.13"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Plane.007.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.99, 0.96, 0.79"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Plane.008.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.80,0.28,0.05"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Plane.009.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.30,0.24,0.80"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Plane.010.obj"/>
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.95,0.47,0.71"/>
+		</bsdf>
+	</mesh>
+	<mesh type="obj">
+		<string name="filename" value="meshes/Icosphere.002.obj"/>
+		<emitter type="area">
+			<color name="radiance" value="4 4 3"/>
+		</emitter>
+	</mesh>
+</scene>

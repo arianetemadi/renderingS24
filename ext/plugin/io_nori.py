@@ -58,14 +58,17 @@ class NoriWriter:
     def write(self):
         """Main method to write the blender scene into Nori format"""
 
-        n_samples = 32
+        n_samples = 64
         # create xml document
         self.doc = Document()
         self.scene = self.doc.createElement("scene")
         self.doc.appendChild(self.scene)
 
         # 1) write integrator configuration
-        self.scene.appendChild(self.create_xml_element("integrator", {"type": "normals"}))
+        integrator = self.create_xml_element("integrator", {"type": "path_tracer_recursive"})
+        integrator.appendChild(self.create_xml_element("boolean", {"name": "rr", "value": "true"}))
+        integrator.appendChild(self.create_xml_element("boolean", {"name": "nee", "value": "true"}))
+        self.scene.appendChild(integrator)
 
         # 2) write sampler
         sampler = self.create_xml_element("sampler", {"type": "independent"})
